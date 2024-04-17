@@ -701,7 +701,7 @@ fxn_exif_summary <- function(index_site){
   fxn_archive_old_csv(index_file_name = index_file_name)
   
   write_csv(exif_summary,
-            here(path_r_out,
+            here(path_out,
                  index_file_name), 
             na = "")
   
@@ -746,7 +746,7 @@ fxn_exif_summary_errors <- function(index_site) {
     fxn_archive_old_csv(index_file_name = index_file_name)
     
     write_csv(exif_errors,
-              here(path_r_out,
+              here(path_out,
                    index_file_name), 
               na = "")
   }

@@ -29,11 +29,11 @@ is_all_numeric <- function(col) {
 }
 # Define file paths ----
 # For R scripts and work
-path_r <- here("R")
-path_r_in <- here(path_r, "input")
+path_r <- here()
+path_in <- here("input")
 
 # Create helpers ----
-#   For image tables ----
+#   For image tables
 # Define exif columns to read  
 # Names match EXIF format
 list_exif_tags <- c("FileName",
@@ -48,7 +48,7 @@ list_exif_tags <- c("FileName",
 
 # column names in image table (21 columns) 
 list_column_names <- 
-  read_csv(here(path_r_in,
+  read_csv(here(path_in,
                 "image-table_column-info.csv"), 
            col_types = cols()) %>%
   arrange(sheet, column_order) %>%
@@ -56,7 +56,7 @@ list_column_names <-
   pull(column_name)
 
 lookup_qc_initials <- 
-  read_csv(here(path_r_in,
+  read_csv(here(path_in,
                 "staff-names.csv"), 
            col_types = cols()) %>%
   drop_na(qc_initials) %>%
@@ -94,7 +94,7 @@ fxn_define_camera_project <- function(index_site){
     path_site <<- here(index_project)
     file_name_dlog <<- "for_deployments.xlsx"
     template_metadata <<- 
-      read_csv(here(path_r_in, 
+      read_csv(here(path_in, 
                     "image-table_metadata_for.csv"), 
                col_types = cols()) %>%
       as.data.frame()
@@ -108,7 +108,7 @@ fxn_define_camera_project <- function(index_site){
     path_site <<- here(index_project, "legacy-data_PWD")
     file_name_dlog <<- "wpi_deployments_all_2013-2016.xlsx"
     template_metadata <<- 
-      read_csv(here(path_r_in, 
+      read_csv(here(path_in, 
                     "image-table_metadata_wpi.csv"), 
                col_types = cols()) %>%
       as.data.frame() 
@@ -121,7 +121,7 @@ fxn_define_camera_project <- function(index_site){
     path_site <<- here(index_project)
     file_name_dlog <<- "den_deployments.xlsx"
     template_metadata <<- 
-      read_csv(here(path_r_in, 
+      read_csv(here(path_in, 
                     "image-table_metadata_wpi.csv"), 
                col_types = cols()) %>%
       as.data.frame()
@@ -134,7 +134,7 @@ fxn_define_camera_project <- function(index_site){
     path_site <<- here(index_project, index_site)
     file_name_dlog <<- paste0("wpi_deployments_", index_site, ".xlsx")
     template_metadata <<- 
-      read_csv(here(path_r_in, 
+      read_csv(here(path_in, 
                     "image-table_metadata_wpi.csv"), 
                col_types = cols()) %>%
       as.data.frame()
@@ -146,7 +146,7 @@ fxn_define_camera_project <- function(index_site){
   
   # File paths ----
   # For summary tables 
-  path_r_out <<- here(path_r, "output", index_site)
+  path_out <<- here("output", index_site)
   
   # For data tables 
   path_data <<- here(path_site, "data")
@@ -268,7 +268,7 @@ fxn_define_camera_project <- function(index_site){
   if(index_site == "DEN"){
     
     species_table_den <<- 
-      read_excel(here(path_r_in, 
+      read_excel(here(path_in, 
                       "binomial-crosswalk.xlsx"), 
                  sheet = "photo-type_binomial_DEN")
 
@@ -327,7 +327,7 @@ fxn_define_camera_project <- function(index_site){
   }else{
     
     species_attributes <<- 
-      read_csv(here(path_r_in, 
+      read_csv(here(path_in, 
                     "attributes_species.csv"), 
                col_types = cols()) %>%
       arrange(binomial) %>%
@@ -360,7 +360,7 @@ fxn_define_camera_project <- function(index_site){
     #
     #   lookup_binomial: known orig_binomial (for binomial_2) 
     lookup_binomial <<- 
-      read_excel(here(path_r_in, 
+      read_excel(here(path_in, 
                       "binomial-crosswalk.xlsx"), 
                  sheet = "binomial") %>%
       distinct(orig_binomial, 
@@ -389,7 +389,7 @@ fxn_define_camera_project <- function(index_site){
       )
     
     lookup_photo_type_binomial <<- 
-      read_excel(here(path_r_in, 
+      read_excel(here(path_in, 
                       "binomial-crosswalk.xlsx"), 
                  sheet = "photo-type_binomial") %>%
       select(photo_type_binomial,
@@ -559,7 +559,7 @@ fxn_table_check_dlog <- function(index_data,
 #   fxn_write_csv_archive_old ----
 fxn_archive_old_csv <- function(index_file_name){
   
-  path_file_name <- here(path_r_out, index_file_name)
+  path_file_name <- here(path_out, index_file_name)
   
   # Check for file, archive if exists
   if(file.exists(path_file_name)){
@@ -574,7 +574,7 @@ fxn_archive_old_csv <- function(index_file_name){
     
     # Archive existing file
     file_move(path = path_file_name, 
-              new_path = here(path_r_out, "z_archive", file_name_with_date))
+              new_path = here(path_out, "z_archive", file_name_with_date))
     
   }
 }

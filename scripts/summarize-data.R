@@ -20,7 +20,7 @@ fxn_define_camera_project("PWD")
 library(camtrapR)
 
 camera_attributes <- 
-  read_csv(here(path_r_in, 
+  read_csv(here(path_in, 
                 "attributes_cameras.csv"))
 
 # ========================================================== -----
@@ -119,14 +119,14 @@ deployments <-
 
 # Write files to csv ----
 # images_all %>%
-#   write_csv(here(path_r_out,
+#   write_csv(here(path_out,
 #                  paste0("images-all_2020-2023_", 
 #                         Sys.Date(), 
 #                         ".csv")
 #                  ))
 # # 
 # images_wms %>%
-#   write_csv(here(path_r_out, 
+#   write_csv(here(path_out, 
 #                  paste0("images-wms_2020-2023_", 
 #                         Sys.Date(), 
 #                         ".csv")
@@ -134,7 +134,7 @@ deployments <-
 # 
 # #
 # deployments %>%
-#   write_csv(here(path_r_out, 
+#   write_csv(here(path_out, 
 #                  paste0("deployments_2020-2023_", 
 #                         Sys.Date(), 
 #                         ".csv")
@@ -143,7 +143,7 @@ deployments <-
 # ---------------------------------------------------------- -----
 # CHECK IMAGE TABLES ----
 # images_all <- 
-#   read_csv(here(path_r_out, 
+#   read_csv(here(path_out, 
 #                 "images-all_2020-2023_2023-11-06.csv"),
 #            col_types = c(
 #              image_id = "c", 
@@ -195,7 +195,7 @@ images_all %>%
 # DETECTIONS ----
 #   images_wms  ----
 images_wms <- 
-  read_csv(here(path_r_out, 
+  read_csv(here(path_out, 
                 "images-wms_2020-2023_2023-11-06.csv"),
            col_types = c(
              image_id = "c", 
@@ -391,7 +391,7 @@ images_wms_detections_30m <-
          starts_with("image"))
 
 # images_wms_detections_30m %>%
-#   write_csv(here(path_r_out, 
+#   write_csv(here(path_out, 
 #                paste0("images-wms_detections_30m_2020-2023_", 
 #                       Sys.Date(), 
 #                       ".csv")
@@ -534,7 +534,7 @@ summary_report <-
                 CTDateFormat         = "ymd", 
                 recordDateTimeCol    = "DateTimeOriginal",
                 recordDateTimeFormat = "ymd HMS", 
-                sinkpath             = path_r_out, 
+                sinkpath             = path_out, 
                 makezip              = FALSE
 )
 # ---------------------------------------------------------- -----

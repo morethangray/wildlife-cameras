@@ -5,14 +5,14 @@ rm(list = ls())
 library(tidyverse)   ## To manipulate data frames
 library(here)   ## To manage directories
 #
-source("K:/R/scripts/functions/fxn_utilities.R")
-source("K:/R/scripts/functions/fxn_tracking.R")
-source("K:/R/scripts/functions/fxn_folders.R")
-source("K:/R/scripts/functions/fxn_images.R")
-source("K:/R/scripts/functions/fxn_image-tables.R")
+source(here("scripts/functions/fxn_utilities.R"))
+source(here("scripts/functions/fxn_tracking.R"))
+source(here("scripts/functions/fxn_folders.R"))
+source(here("scripts/functions/fxn_images.R"))
+source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # Define site  ----
-index_site = "DEN"
+index_site = "PWD"
 index_year = "2024"
 # ========================================================== -----
 # ---------------------------------------------------------- -----

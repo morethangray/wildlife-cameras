@@ -130,7 +130,7 @@ fxn_dir_jpg_find_new <- function(index_site,
     fxn_archive_old_csv(index_file_name = index_file_name)
     
     write_csv(tbl_new,
-              here(path_r_out,
+              here(path_out,
                    index_file_name), 
               na = "")
   }
