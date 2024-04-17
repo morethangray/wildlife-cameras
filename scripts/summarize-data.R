@@ -20,7 +20,7 @@ fxn_define_camera_project("PWD")
 library(camtrapR)
 
 camera_attributes <- 
-  read_csv(here(path_r_in, 
+  read_csv(here(path_in, 
                 "attributes_cameras.csv"))
 
 # ========================================================== -----

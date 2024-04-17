@@ -1762,7 +1762,7 @@ template_images <-
 # Create a lookup table containing the xlsx column properties  
 # Use the lookup table to list the column properties to apply to each template
 lookup_cell_properties <- 
-  read_csv(here(path_r_in,
+  read_csv(here(path_in,
                 "image-table_column-info.csv"), 
            col_types = cols()) %>%
   arrange(sheet, column_order)
@@ -1830,7 +1830,7 @@ list_width_metadata <<-
 create_validation_lists <- function(index_site){
   
   all_lists <- 
-    read_csv(here(path_r_in, "validation-lists.csv"), 
+    read_csv(here(path_in, "validation-lists.csv"), 
              col_types = cols()) 
   
   if(index_site == "DEN"){

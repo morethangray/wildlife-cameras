@@ -1,0 +1,22 @@
+column_name,description,field_type,field_format,example
+image_id,"Unique identifier for each row, based on camera, date to, and image_n (left padded to 5 digits)",Text,X_X#_YYMMDD_#####,P_A4_220229_01234
+date,Date image was captured (from image metadata),Date,YYYY-MM-DD,2023-02-10
+time,Time image was captured (from image metadata),Time,HH:MM:SS,13:01:14
+photo_type,Type of image,Text,"Blank, Animal, Maintenance (Start, Setup, Pickup, End), Corrupt, Needs ID",Animal
+binomial_1,"Identification of first species in image, as a binomial (Genus species)",Text,See table of binomial values (32 options),Urocyon cinereoargenteus
+count_1,Count of first species in an image,Integer,Values greater than or equal to 0,1
+comments,Notes or comments about the image,Text,[free text],View blocked by grass; fox carrying prey
+catalog_by,Name of the person who identified the contents of the image,Text,FirstName LastName,Alan Turing
+review,"Flag for an image that needs additional review (i.e., a yellow highlight)",Text,"TRUE, FALSE",N
+good,"Flag for an image that is good (i.e., a blue highlight)",Text,"TRUE, FALSE",N
+error,"Flag for an image with an error (timestamp, knocked down, obstructed view, camera problem)",Text,"TRUE, FALSE",Y
+qc_by,Name of the person who QC'd the contents of the image,Text,FirstName LastName,Greta Thurnberg
+qc_certainty,Certainty about image identification,Text,"Absolutely sure, Pretty sure, or Not sure (See table of certainty values for details)",Absolutely sure
+binomial_2,"Identification of second species in image, as a binomial",Text,See table of binomial values (32 options),Rodent species
+count_2,Count of second species in an image,Integer,Values greater than or equal to 0,1
+binomial_3,"Identification of third species in image, as a binomial",Text,See table of binomial values (32 options),Odocoileus hemionus
+count_3,Count of third species in an image,Integer,Values greater than or equal to 0,1
+id,Unique identifier for each deployment,Text,"Seventeen character sequence of ""site_camera_end date"" using the pattern ""X_X#_YYMMDD_#####""",P_A4_220229_01234
+image_n,Image number,Integer,Sequential number from .JPG file name,1234
+image_file,Full file path for the image file,Text,"Full image file path, including .JPG suffix",K:/WPI Project/PWD/images/2022/P_A4/P_A4_220229/P_A4_220229_01234.JPG
+date_time,Date and time image was captured in UTC format (from image metadata),Datetime,YYYY-MM-DDTHH:MM:SSZ,2021-02-10T15:02:03Z

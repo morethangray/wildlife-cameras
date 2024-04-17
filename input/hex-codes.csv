@@ -1,0 +1,38 @@
+color,color_name,color_meaning,hash_hex,color_id,html_color,color_name_html
+FF0070C0,blue,good,#0070C0,dodgerblue3,#FF0070C0,
+FF00B0F0,blue,good,#00B0F0,deepskyblue2,#FF00B0F0,
+FF00CCFF,blue,good,#00CCFF,deepskyblue,#FF00CCFF,Sky Blue
+FF00CCFF,blue,good,#00CCFF,deepskyblue1,#FF00CCFF,Sky Blue
+FF00FFFF,blue,good,#00FFFF,cyan,#FF00FFFF,Turquoise
+FF00FFFF,blue,good,#00FFFF,cyan1,#FF00FFFF,Turquoise
+FF1F497D,blue,good,#1F497D,royalblue4,#FF1F497D,
+FF2A6099,blue,good,#2A6099,steelblue4,#FF2A6099,
+FF3366FF,blue,good,#3366FF,royalblue2,#FF3366FF,Light Blue
+FF4A86E8,blue,good,#4A86E8,royalblue2,#FF4A86E8,
+FF4BACC6,blue,good,#4BACC6,steelblue3,#FF4BACC6,
+FF4F81BD,blue,good,#4F81BD,steelblue,#FF4F81BD,
+FF5B9BD5,blue,good,#5B9BD5,steelblue3,#FF5B9BD5,
+FF729FCF,blue,good,#729FCF,skyblue3,#FF729FCF,
+FF808080,gray,unknown,#808080,gray50,#FF808080,Gray-50%
+FF808080,gray,unknown,#808080,grey50,#FF808080,Gray-50%
+FF92D050,green,unknown,#92D050,darkolivegreen3,#FF92D050,
+FF969696,gray,unknown,#969696,gray59,#FF969696,Gray-Gray40%
+FF969696,gray,unknown,#969696,grey59,#FF969696,Gray-Gray40%
+FF99CC00,green,good,#99CC00,chartreuse2,#FF99CC00,Lime
+FF99CCFF,blue,good,#99CCFF,skyblue1,#FF99CCFF,Pale Blue
+FF9BBB59,green,review,#9BBB59,darkolivegreen3,#FF9BBB59,
+FFC0C0C0,gray,unknown,#C0C0C0,gray75,#FFC0C0C0,Gray-25%
+FFC0C0C0,gray,unknown,#C0C0C0,grey75,#FFC0C0C0,Gray-25%
+FFCCFFFF,blue,good,#CCFFFF,paleturquoise1,#FFCCFFFF,Light Turquoise
+FFEEECE1,gray,review,#EEECE1,ivory2,#FFEEECE1,
+FFFF0000,red,review,#FF0000,red,#FFFF0000,Red
+FF222222,red,review,#222222,red,#FF222222,Red
+FF002060,red,review,#002060,red,#FFFF002060,Red
+FFFF99CC,pink,good,#FF99CC,lightpink1,#FFFF99CC,Rose
+FFFFC000,yellow,review,#FFC000,darkgoldenrod1,#FFFFC000,
+FFFFFF00,yellow,review,#FFFF00,yellow,#FFFFFF00,Yellow
+FFFFFF00,yellow,review,#FFFF00,yellow1,#FFFFFF00,Yellow
+FFFFFFFF,white,unfilled,#FFFFFF,white,#FFFFFFFF,White
+FFFFFFFF,white,unfilled,#FFFFFF,gray100,#FFFFFFFF,White
+FFFFFFFF,white,unfilled,#FFFFFF,grey100,#FFFFFFFF,White
+FF000000,black,default,#000000,black,#FF000000,Black
