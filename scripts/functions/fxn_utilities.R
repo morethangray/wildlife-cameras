@@ -88,24 +88,28 @@ lookup_certainty <-
 fxn_define_camera_project <- function(index_site){
   
   # Project attributes ----
+  # Define server location
+  
+  path_server <- "K:"
+  
   if(index_site == "FOR"){
     
     index_project <<- "FOR Project"
-    path_site <<- here(index_project)
+    path_site <<- file.path(path_server, index_project)
     file_name_dlog <<- "for_deployments.xlsx"
     template_metadata <<- 
       read_csv(here(path_in, 
                     "image-table_metadata_for.csv"), 
                col_types = cols()) %>%
       as.data.frame()
-    path_ilog <<- here("FOR - Cataloguing Inventory_Updated.xlsx")
+    path_ilog <<- file.path(path_server, "FOR - Cataloguing Inventory_Updated.xlsx")
     
     path_jpg_l <<- "L:/FOR Project/images"
     
   }else if(index_site == "legacy-data"){
     
     index_project <<- "WPI Project"
-    path_site <<- here(index_project, "legacy-data_PWD")
+    path_site <<- file.path(path_server, index_project, "legacy-data_PWD")
     file_name_dlog <<- "wpi_deployments_all_2013-2016.xlsx"
     template_metadata <<- 
       read_csv(here(path_in, 
@@ -118,27 +122,27 @@ fxn_define_camera_project <- function(index_site){
   }else if(index_site == "DEN"){
     
     index_project <<- "DEN Project"
-    path_site <<- here(index_project)
+    path_site <<- file.path(path_server, index_project)
     file_name_dlog <<- "den_deployments.xlsx"
     template_metadata <<- 
       read_csv(here(path_in, 
                     "image-table_metadata_wpi.csv"), 
                col_types = cols()) %>%
       as.data.frame()
-    path_ilog <<- here("DEN - Cataloguing Inventory.xlsx")
+    path_ilog <<- file.path(path_server, "DEN - Cataloguing Inventory.xlsx")
     
     
   }else{
     
     index_project <<- "WPI Project"
-    path_site <<- here(index_project, index_site)
+    path_site <<- file.path(path_server, index_project, index_site)
     file_name_dlog <<- paste0("wpi_deployments_", index_site, ".xlsx")
     template_metadata <<- 
       read_csv(here(path_in, 
                     "image-table_metadata_wpi.csv"), 
                col_types = cols()) %>%
       as.data.frame()
-    path_ilog <<- here("WPI - Cataloguing Inventory_Updated.xlsx")
+    path_ilog <<- file.path(path_server, "WPI - Cataloguing Inventory_Updated.xlsx")
     
     path_jpg_l <<- paste0("L:/WPI Project/", index_site)
     
