@@ -1,4 +1,3 @@
-# updated: 2024-04-03 ----
 # Load libraries, functions, workflows -----
 rm(list = ls())
 #
@@ -79,12 +78,21 @@ fxn_dir_jpg_rename(index_site,
 # #
 # ---------------------------------------------------------- -----
 # Check image files ----
+#   Map jpg files ----
+# jpg_map_files <- fxn_jpg_map_files(index_site, 
+#                                    index_year,
+#                                    done_rename = FALSE)
+# 
+# jpg_map_files %>%
+#   group_by(id) %>%
+#   count()
+                  
 #   Check for timestamp errors -----
 #   - Confirms image timestamp is within survey dates
 #   - Checks for file size = 0 (corrupt files)
 fxn_jpg_timestamp_check(index_site, index_year)
 #
-#   [BY HAND] Update has_data in dlog ----
+# [BY HAND] Update has_data in dlog ----
 #
 #   Preview file naming conventions ----
 #   - Count number of images with and without parentheses
@@ -97,15 +105,13 @@ jpg_summary <- fxn_jpg_summary(index_site,
 # Uses regex to replace "2019:01:01" with "2019-01-01"
 fxn_jpg_rename_exif_01(index_site, index_year)
 #
-# [BY HAND] Update done_rename in dlog 
-#
-#   [BY HAND] Update done_rename in dlog ----
+# [BY HAND] Update done_rename in dlog ----
 #   Check renamed files ----
 check_rename <- fxn_jpg_check_rename(index_site, index_year) 
 # # Rename files if needed
 # fxn_jpg_rename_redo(jpg_rename_check)
 #
-#   [BY HAND] Update done_exif in dlog ----
+# [BY HAND] Update done_exif in dlog ----
 #
 # ---------------------------------------------------------- -----
 # Create exif tables ----
@@ -119,7 +125,7 @@ fxn_exif_summary(index_site) %>%
 #   Check for exif errors ----
 fxn_exif_summary_errors(index_site)
 #
-#   [BY HAND] Update deployment log as follows: -----
+# [BY HAND] Update deployment log as follows: -----
 #
 # When id is PRESENT in exif_summary_errors: 
 #   - flag error with done_fix = F until addressed

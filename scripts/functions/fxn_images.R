@@ -1,4 +1,3 @@
-# updated: 2024-04-03 ----
 # ========================================================== -----
 # Create helpers ----
 #   fxn_wrap_file_rename ----
@@ -21,7 +20,7 @@ fxn_jpg_map_files <- function(index_site,
   
   fxn_define_camera_project(index_site)
   
-  # List the deployments to rename ----
+  # List the deployments ----
   if(done_rename == FALSE){
     subset_dlog <- 
       dlog %>%
@@ -369,14 +368,6 @@ fxn_jpg_rename_exif_01 <- function(index_site, index_year){
                       done_rename = FALSE) 
   
   # unique(jpg_init$id)
-  
-  # Count parentheses ----
-    # jpg_init_n <- 
-    #   jpg_init %>%
-    #   # Filter to files without parentheses 
-    #   filter(str_count(file_name, "\\(") == paren_n & 
-    #            str_count(file_name, "\\)") == paren_n)
-  
   # Check for files to process ----
   if(nrow(jpg_init) == 0) stop("No files process")
 
@@ -384,7 +375,7 @@ fxn_jpg_rename_exif_01 <- function(index_site, index_year){
   # Identify the deployments to renumber 
   index_list <- unique(jpg_init$id)
   
-  # index_id = index_list[1]
+  # index_id = index_list[3]
   for(index_id in index_list){
     
     # Create helpers ----
