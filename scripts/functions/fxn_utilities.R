@@ -417,10 +417,6 @@ fxn_define_camera_project <- function(index_site){
   
   validation_lists <<- 
     create_validation_lists(index_site)  
-  
-  
- 
-  
 }
 # File management ----
 #   fxn_table_check_dlog ----
