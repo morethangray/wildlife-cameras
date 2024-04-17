@@ -1,4 +1,3 @@
-# updated: 2024-04-03 ----
 # Load libraries, functions, workflows -----
 rm(list = ls())
 #
