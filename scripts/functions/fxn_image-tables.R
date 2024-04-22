@@ -721,7 +721,7 @@ fxn_table_check_qc <- function(index_site){
   list_files <- unique(dir_table$file_name)
   
   datalist <- list()
-  # index_file = list_files[31]
+  # index_file = list_files[1]
   for(index_file in list_files){
 
     index_data <-
@@ -1197,6 +1197,17 @@ fxn_conduct_checks_qc <- function(index_data,
   
   if(nrow(check_special_species) > 0){
     check_errors$err_special_species = TRUE
+  }
+  
+  #   err_qc_by ----
+  check_qc_by <- 
+    data_tidy_fixed %>%
+    drop_na(qc_by) %>%
+    distinct(qc_by) %>%
+    filter(qc_by %in%  unique(lookup_qc_initials$qc_by))
+  
+  if(nrow(check_qc_by) > 0){
+    check_errors$err_qc_by = TRUE
   }
   
   #   has_fatal: Check for fatal errors ---- 

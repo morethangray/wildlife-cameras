@@ -173,13 +173,14 @@ fxn_tidy_for_qc(index_site)
 #
 # ---------------------------------------------------------- -----
 # Check QC'd image tables ----
-# TO DO: CONFIRM QC INITIALS ARE IN lookup_qc_initials ----
-# TO DO: CONFIRM QC_BY IS FULL NAME (NOT INITIALS)
+
 check_catalog <- fxn_table_check_catalog(index_site, 
                                          index_type = "qc") 
 #
 # START WORKING HERE ----
 # Need to review 24 done_qc files 
+# TO DO: CONFIRM QC INITIALS ARE IN lookup_qc_initials ----
+# TO DO: CONFIRM QC_BY IS FULL NAME (NOT INITIALS)
 check_qc <- fxn_table_check_qc(index_site)
 # ---------------------------------------------------------- -----
 # Create clean image tables in vault ----
