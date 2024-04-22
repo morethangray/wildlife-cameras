@@ -30,8 +30,9 @@ fxn_dir_table_map <- function(index_site,
     
     filter_dlog <- dlog %>%
       filter(use_data == TRUE,
-             # done_tidy == TRUE,
-             done_qc == TRUE)
+             done_tidy == TRUE,
+             done_qc == TRUE | done_qc == "CHECK", 
+             done_vault == FALSE)
     index_path <- path_table_qc
     
   } else if(index_type == "clean") {
@@ -2415,6 +2416,7 @@ fxn_fix_typos <- function(index_data){
       # Title case for 'catalog_by', 'qc_by'; sentence case for 'qc_certainty'
       catalog_by = str_to_title(catalog_by),
       qc_by = str_to_title(qc_by),
+      qc_by = if_else(qc_by == "Vf", "Vivane Fuller", qc_by),
       qc_certainty = correct_common_typos(qc_certainty),
       
       # Get first, last image numbers for 'photo_type' logic
@@ -3017,3 +3019,5 @@ list_hide_images_tidy_3 <-
   pull(column_order)
 
 # ========================================================== -----
+
+
