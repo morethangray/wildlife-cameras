@@ -674,6 +674,16 @@ fxn_table_check_catalog <- function(index_site,
                index_n,
                starts_with("err"),
                starts_with("has_column"))
+    
+    index_file_name <- paste0(index_site, "_catalog_errors.csv")
+    
+    fxn_archive_old_csv(index_file_name = index_file_name)
+    
+    write_csv(output,
+              here(path_out,
+                   index_file_name), 
+              na = "")
+    
   } else {
     output <- bind_datalist
   }
@@ -747,6 +757,16 @@ fxn_table_check_qc <- function(index_site){
       relocate(id,
                starts_with("err"),
                starts_with("has_column"))
+    
+    index_file_name <- paste0(index_site, "_qc_errors.csv")
+    
+    fxn_archive_old_csv(index_file_name = index_file_name)
+    
+    write_csv(output,
+              here(path_out,
+                   index_file_name), 
+              na = "")
+    
   } else {
     output <- bind_datalist
   }
