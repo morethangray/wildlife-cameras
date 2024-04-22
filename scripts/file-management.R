@@ -135,7 +135,7 @@ fxn_exif_summary_errors(index_site)
 # When id is ABSENT from exif_summary_errors:
 #   - date_image_from matches date_from
 #   - date_image_to matches date_to
-#   - date_excl_from and date_excl_to are NA
+#   - date_excl_from and date_excl_to are N/A
 #   - use_data is TRUE
 #
 # ---------------------------------------------------------- -----
