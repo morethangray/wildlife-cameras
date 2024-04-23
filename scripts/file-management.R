@@ -177,12 +177,9 @@ fxn_tidy_for_qc(index_site)
 check_catalog <- fxn_table_check_catalog(index_site, 
                                          index_type = "qc") 
 #
-# START WORKING HERE ----
-# Need to review 24 done_qc files 
 check_qc <- fxn_table_check_qc(index_site)
 # ---------------------------------------------------------- -----
 # Create clean image tables in vault ----
-
 fxn_tidy_for_vault(index_site)
 #
 # ========================================================== -----

@@ -1125,7 +1125,8 @@ fxn_conduct_checks_qc <- function(index_data,
            err_blank_binomial = NA, 
            err_count_animal = NA, 
            err_count_blank = NA, 
-           err_special_species = NA)
+           err_special_species = NA, 
+           err_qc_by = NA)
   
   # Conduct checks ----
   #   err_needs_review ----
@@ -1224,7 +1225,7 @@ fxn_conduct_checks_qc <- function(index_data,
     data_tidy_fixed %>%
     drop_na(qc_by) %>%
     distinct(qc_by) %>%
-    filter(qc_by %in%  unique(lookup_qc_initials$qc_by))
+    filter(qc_by %nin% unique(lookup_qc_initials$qc_by))
   
   if(nrow(check_qc_by) > 0){
     check_errors$err_qc_by = TRUE
@@ -2447,7 +2448,7 @@ fxn_fix_typos <- function(index_data){
       # Title case for 'catalog_by', 'qc_by'; sentence case for 'qc_certainty'
       catalog_by = str_to_title(catalog_by),
       qc_by = str_to_title(qc_by),
-      qc_by = if_else(qc_by == "Vf", "Vivane Fuller", qc_by),
+      qc_by = if_else(qc_by == "Vf", "Viviane Fuller", qc_by),
       qc_certainty = correct_common_typos(qc_certainty),
       
       # Get first, last image numbers for 'photo_type' logic
