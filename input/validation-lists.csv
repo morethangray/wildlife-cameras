@@ -51,53 +51,58 @@ Sorex vagrans,binomial,drift net,18
 Mammalia Lagomorpha Leporidae,binomial,drift net,19
 Lepus californicus,binomial,drift net,20
 Sylvilagus bachmani,binomial,drift net,21
-Amphibia Anura,binomial,drift net,22
-Amphibia Anura Hylidae,binomial,drift net,23
-Pseudacris sierra,binomial,drift net,24
-Amphibia Anura Ranidae,binomial,drift net,25
-Lithobates catesbeianus,binomial,drift net,26
-Rana boylii,binomial,drift net,27
-Rana temporaria,binomial,drift net,28
-Aneides flavipunctatus,binomial,drift net,29
-Aneides lugubris,binomial,drift net,30
-Batrachoseps species,binomial,drift net,31
-Dicamptodon tenebrosus,binomial,drift net,32
-Ensatina eschscholtzii,binomial,drift net,33
-Amphibia Caudata,binomial,drift net,34
-Taricha granulosa,binomial,drift net,35
-Taricha rivularis,binomial,drift net,36
-Taricha torosa,binomial,drift net,37
-Reptilia Squamata,binomial,drift net,38
-Reptilia Squamata Boidae,binomial,drift net,39
-Charina bottae,binomial,drift net,40
-Reptilia Squamata Colubridae,binomial,drift net,41
-Coluber constrictor,binomial,drift net,42
-Contia tenuis,binomial,drift net,43
-Diadophis punctatus,binomial,drift net,44
-Lampropeltis getula,binomial,drift net,45
-Lampropeltis zonata,binomial,drift net,46
-Pituophis catenifer,binomial,drift net,47
-Hypsiglena ochrorhynchus,binomial,drift net,48
-Lampropeltis californiae,binomial,drift net,49
-Thamnophis atratus,binomial,drift net,50
-Thamnophis elegans,binomial,drift net,51
-Thamnophis sirtalis,binomial,drift net,52
-Reptilia Squamata Viperidae,binomial,drift net,53
-Crotalus oreganus,binomial,drift net,54
-Reptilia Squamata Scincidae,binomial,drift net,55
-Plestiodon skiltonianus,binomial,drift net,56
-Reptilia Squamata Anguidae,binomial,drift net,57
-Elgaria coerulea,binomial,drift net,58
-Elgaria multicarinata,binomial,drift net,59
+Mammalia Carnivora Mephitidae,binomial,drift net,22
+Amphibia Anura,binomial,drift net,23
+Amphibia Anura Hylidae,binomial,drift net,24
+Pseudacris sierra,binomial,drift net,25
+Amphibia Anura Ranidae,binomial,drift net,26
+Lithobates catesbeianus,binomial,drift net,27
+Rana boylii,binomial,drift net,28
+Rana temporaria,binomial,drift net,29
+Amphibia Caudata,binomial,drift net,30
+Amphibia Caudata Cryptobranchidae,binomial,drift net,31
+Dicamptodon ensatus,binomial,drift net,32
+Amphibia Caudata Plethodontidae,binomial,drift net,33
+Batrachoseps attenuatus,binomial,drift net,34
+Aneides flavipunctatus,binomial,drift net,35
+Aneides lugubris,binomial,drift net,36
+Ensatina eschscholtzii,binomial,drift net,37
+Amphibia Caudata Salamandridae,binomial,drift net,38
+Taricha rivularis,binomial,drift net,39
+Taricha granulosa,binomial,drift net,40
+Taricha torosa,binomial,drift net,41
+Reptilia Squamata,binomial,drift net,42
+Reptilia Squamata Anguidae,binomial,drift net,43
+Elgaria coerulea,binomial,drift net,44
+Elgaria multicarinata,binomial,drift net,45
+Reptilia Squamata Boidae,binomial,drift net,46
+Charina bottae,binomial,drift net,47
+Reptilia Squamata Colubridae,binomial,drift net,48
+Coluber constrictor mormon,binomial,drift net,49
+Contia tenuis,binomial,drift net,50
+Diadophis punctatus,binomial,drift net,51
+Hypsiglena ochrorhynchus,binomial,drift net,52
+Lampropeltis getula californiae,binomial,drift net,53
+Lampropeltis getula,binomial,drift net,54
+Lampropeltis zonata,binomial,drift net,55
+Pituophis catenifer,binomial,drift net,56
+Thamnophis atratus,binomial,drift net,57
+Thamnophis elegans,binomial,drift net,58
+Thamnophis sirtalis,binomial,drift net,59
 Reptilia Squamata Lacertidae,binomial,drift net,60
 Sceloporus occidentalis,binomial,drift net,61
-Actinemys marmorata,binomial,drift net,62
-Insecta,binomial,drift net,63
-Arachnida,binomial,drift net,64
-Aves,binomial,drift net,65
-Mammalia Chiroptera,binomial,drift net,66
-Other,binomial,drift net,67
-N/A,binomial,drift net,68
+Reptilia Squamata Scincidae,binomial,drift net,62
+Plestiodon skiltonianus,binomial,drift net,63
+Reptilia Squamata Viperidae,binomial,drift net,64
+Crotalus oreganus,binomial,drift net,65
+Reptilia Testudines Emydidae,binomial,drift net,66
+Actinemys marmorata,binomial,drift net,67
+Insecta,binomial,drift net,68
+Arachnida,,,
+Aves,,,
+Mammalia Chiroptera,,,
+Other,,,
+N/A,,,
 Animal,photo_type,all,1
 Blank,photo_type,all,2
 Unknown,photo_type,all,3
