@@ -456,7 +456,7 @@ fxn_new_photo_type_binomial_all <- function(index_site,
     fxn_archive_old_csv(index_file_name = index_file_name)
     
     write_csv(new_all_split,
-              here(path__out,
+              here(path_out,
                    index_file_name), 
               na = "")
     
