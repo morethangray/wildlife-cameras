@@ -1858,31 +1858,6 @@ list_width_metadata <<-
   filter(sheet %in% "metadata") %>%
   pull(column_width)
 
-# Create lists for data validations ----
-create_validation_lists <- function(index_site){
-  
-  all_lists <- 
-    read_csv(here(path_in, "validation-lists.csv"), 
-             col_types = cols()) 
-  
-  if(index_site == "DEN"){
-    validation_list <- 
-      all_lists %>%
-      filter(capture_type %in% c("all", "drift net")) %>%
-      arrange(list, sort) %>%
-      # rowid_to_column("row") %>%
-      relocate(value, list)
-    
-  }else{
-    validation_list <- 
-      all_lists %>%
-      filter(capture_type %in% c("all", "wpi")) %>%
-      # rowid_to_column("row") %>%
-      relocate(value, list)
-  }
-}
-
-#
 # Define where to start erasing columns (for output) 
 #   Extra columns are erased to restrict the use of filters to named columns 
 #   Otherwise the sheet is super wide and all columns have filters

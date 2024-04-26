@@ -1,27 +1,22 @@
-# updated: 2024-02-23 ----
 # Load libraries, functions, workflows -----
 rm(list = ls())
 #
 library(tidyverse)   ## To manipulate data frames
 library(here)   ## To manage directories
 #
-source("K:/R/scripts/functions/fxn_utilities.R")
-# source("K:/R/scripts/functions/fxn_tracking.R")
-# source("K:/R/scripts/functions/fxn_folders.R")
-# source("K:/R/scripts/functions/fxn_image-tables.R")
+source(here("scripts/functions/fxn_utilities.R"))
 # 
 # Define site  ----
 index_site = "PWD"
-index_year = "2023"
-fxn_define_camera_project("PWD")
+# index_year = "2023"
+fxn_define_camera_project(index_site = index_site)
 #
 # ---------------------------------------------------------- -----
 # New libraries, functions ----
 library(camtrapR)
 
 camera_attributes <- 
-  read_csv(here(path_in, 
-                "attributes_cameras.csv"))
+  read_csv(here(path_in, "attributes_cameras.csv"))
 
 # ========================================================== -----
 # COLLATE IMAGE TABLES FROM VAULT -----

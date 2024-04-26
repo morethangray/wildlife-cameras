@@ -82,6 +82,29 @@ lookup_certainty <-
                           "Absolutely sure",
                           "Absolutely sure"))
 
+# Create lists for data validations ----
+create_validation_lists <- function(index_site){
+  
+  all_lists <- 
+    read_csv(here(path_in, "validation-lists.csv"), 
+             col_types = cols()) 
+  
+  if(index_site == "DEN"){
+    validation_list <- 
+      all_lists %>%
+      filter(capture_type %in% c("all", "drift net")) %>%
+      arrange(list, sort) %>%
+      # rowid_to_column("row") %>%
+      relocate(value, list)
+    
+  }else{
+    validation_list <- 
+      all_lists %>%
+      filter(capture_type %in% c("all", "wpi")) %>%
+      # rowid_to_column("row") %>%
+      relocate(value, list)
+  }
+}
 
 # Define camera project ----
 fxn_define_camera_project <- function(index_site){
