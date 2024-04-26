@@ -11,7 +11,7 @@ source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # Define site  ----
-index_site = "PWD"
+index_site = "MMP"
 index_year = "2024"
 # ========================================================== -----
 # ---------------------------------------------------------- -----
@@ -22,7 +22,7 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(result_list[["done_tidy"]])
 # 
 # Find new files ----
-# Folders  34M
+# Folders  17M
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #
 # Image tables 
@@ -32,7 +32,7 @@ fxn_table_find_new(index_site)
 #   Blank: 0P; 0M
 check_blank <- fxn_find_files_to_process("blank")
 #
-#   Tidy: 0P; 26M or 29M
+#   Tidy: 0P; 0M
 check_tidy <- fxn_find_files_to_process("tidy")
 # check_tidy %>%
 #   filter(need_process == TRUE)
