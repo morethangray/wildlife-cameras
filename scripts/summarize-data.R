@@ -5,6 +5,7 @@ library(tidyverse)   ## To manipulate data frames
 library(here)   ## To manage directories
 #
 source(here("scripts/functions/fxn_utilities.R"))
+source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # Define site  ----
 index_site = "PWD"
@@ -19,6 +20,22 @@ camera_attributes <-
   read_csv(here(path_in, "attributes_cameras.csv"))
 
 # ========================================================== -----
+# CHECK YEARS WITH DATA ----
+dlog %>%
+  filter(use_data == TRUE) %>%
+  mutate(done = done_catalog) %>%
+  group_by(year_to, done) %>%
+  count() %>%
+  spread(done, n)
+
+dlog %>%
+  filter(use_data == TRUE) %>%
+  mutate(done = done_vault) %>%
+  group_by(year_to, done) %>%
+  count() %>%
+  spread(done, n)
+
+# ========================================================== -----
 # COLLATE IMAGE TABLES FROM VAULT -----
 # List the deployments to collate ----
 list_id <- 
@@ -27,26 +44,18 @@ list_id <-
   arrange(id) %>%
   pull(id)
 
-# dlog %>%
-#   filter(use_data == TRUE) %>%
-#   group_by(year_to, done_vault) %>%
-#   count() %>%
-#   spread(done_vault, n)
-# 
-# list_id <- 
-#   dlog %>%
-#   filter(done_vault == TRUE, 
-#          year_to != "2016") %>%
-#   arrange(id) %>%
-#   pull(id)
+# index_id = list_id[2]
+# Function to process each file (done_vault) ----
+read_and_process_file_vault <- function(index_id) {
 
-# index_id <- list_id[16]
-# Function to process each file ----
-read_and_process_file <- function(index_id) {
   index_path <- here(path_vault, 
                      paste0(index_id, "_clean.xlsx"))
   
-  data <- 
+  if(!file.exists(index_path)) {
+    stop("File does not exist: ", index_path)
+  }
+  
+  xlsx_data <- 
     read_excel(index_path, 
                sheet = "Images",
                col_types = 
@@ -79,33 +88,68 @@ read_and_process_file <- function(index_id) {
            image_id = str_replace(image_id, id_init, id), 
            image_file = str_replace(image_file, id_init, id)) %>%
     select(all_of(list_column_names))  
-                     
+  
   cat(index_id, "\n")
+  
+  return(xlsx_data)
 }
 
-
 # Read and collate files ----
-datalist <- map(set_names(list_id[1:2]),
-                read_and_process_file)
+datalist <- map_df(list_id, read_and_process_file_vault)
 
 # Combine the list of data frames into one data frame
 images_all <- bind_rows(datalist)
 
+
+# ---------------------------------------------------------- -----
+# COLLATE CATALOGED IMAGE TABLES -----
+# Function to process each file (done_catalog) ----
+read_and_process_file_catalog <- function(index_site){
+  
+  fxn_define_camera_project(index_site)
+  
+  # List the deployments to collate ----
+  list_id <- 
+    dlog %>%
+    filter(done_catalog == TRUE, 
+           done_vault == FALSE) %>%
+    arrange(id)  %>%
+    pull(id)
+  
+  # Read and collate files ----
+  datalist <- list()
+  # index_id <- list_id[1]
+  for(index_id in list_id){
+    
+    index_file <- paste0(index_id, "_final.xlsx")
+    
+    datalist[[index_id]] <-
+      fxn_table_read_xlsx(index_file = index_file,
+                          index_type = "catalog/z_archive")
+  }
+  bind_datalist <- do.call(bind_rows, datalist)
+}
+
+images_all_catalog <- read_and_process_file_catalog(index_site)
+# ---------------------------------------------------------- -----
+# Combine tables and write csv ----
+bind_images_all <- 
+ bind_rows(images_all, 
+           images_all_catalog)
 # Subset to images of wild mammal species (wms) 
 images_wms <- 
-  images_all %>%
+  bind_images_all %>%
   filter(binomial_1 %in% list_binomial_wms |
            binomial_2 %in% list_binomial_wms |
            binomial_3 %in% list_binomial_wms)
 
 # Get dlog information
-list_id_tables <- unique(images_all$id)
+list_id_tables <- unique(bind_images_all$id)
 
 deployments <- 
   dlog %>%
-  filter(done_vault == TRUE) %>%
+  filter(id %in% list_id_tables_catalog) %>%
   select(-starts_with("done"), 
-         -n_survey,
          -has_data,
          -use_data, 
          -date_added, 
@@ -113,28 +157,37 @@ deployments <-
   remove_constant(na.rm = TRUE)
 
 # Write files to csv ----
-# images_all %>%
-#   write_csv(here(path_out,
-#                  paste0("images-all_2020-2023_", 
-#                         Sys.Date(), 
-#                         ".csv")
-#                  ))
-# # 
-# images_wms %>%
-#   write_csv(here(path_out, 
-#                  paste0("images-wms_2020-2023_", 
-#                         Sys.Date(), 
-#                         ".csv")
-#   ))
-# 
-# #
-# deployments %>%
-#   write_csv(here(path_out, 
-#                  paste0("deployments_2020-2023_", 
-#                         Sys.Date(), 
-#                         ".csv")
-#   ))
-#             
+images_wms %>%
+  write_csv(here(path_out,
+                 paste0(index_site, 
+                        "_images-wms_",
+                        Sys.Date(),
+                        ".csv")
+  ))
+
+#
+deployments %>%
+  write_csv(here(path_out,
+                 paste0(index_site, 
+                        "_deployments_",
+                        Sys.Date(),
+                        ".csv")
+  ))
+#     
+# Image count ----
+images_wms %>%
+  group_by(year, species) %>%
+  summarize(total = n()) %>%
+  spread(year, total)
+
+detections_30m_year_species %>%
+  write_csv(here(path_out,
+                 paste0(index_site, 
+                        "_images-wms_detections_30m_year_species_",
+                        Sys.Date(),
+                        ".csv")), 
+            na = "0"
+  )
 # ---------------------------------------------------------- -----
 # CHECK IMAGE TABLES ----
 # images_all <- 
@@ -163,58 +216,60 @@ deployments <-
 #              date_time = "T"
 #            )
 #   ) 
-
-images_all %>%
-  select(binomial_1, binomial_2, binomial_3, 
-         count_1, count_2, id) %>%
-  drop_na(count_1) %>%
-  filter(count_1 > 0) %>%
-  filter(is.na(binomial_1)) 
-
-images_all %>%
-  select(binomial_1, binomial_2, binomial_3,
-         count_1, count_2, id) %>%
-  drop_na(count_2) %>%
-  filter(count_2 > 0) %>%
-  filter(is.na(binomial_2))
-
-images_all %>%
-  select(binomial_1, binomial_2, binomial_3, 
-         count_1, count_2, 
-         count_3, id) %>%
-  drop_na(count_3) %>%
-  filter(count_3 > 0) %>%
-  filter(is.na(binomial_3))
+# 
+# images_all %>%
+#   select(binomial_1, binomial_2, binomial_3, 
+#          count_1, count_2, id) %>%
+#   drop_na(count_1) %>%
+#   filter(count_1 > 0) %>%
+#   filter(is.na(binomial_1)) 
+# 
+# images_all %>%
+#   select(binomial_1, binomial_2, binomial_3,
+#          count_1, count_2, id) %>%
+#   drop_na(count_2) %>%
+#   filter(count_2 > 0) %>%
+#   filter(is.na(binomial_2))
+# 
+# images_all %>%
+#   select(binomial_1, binomial_2, binomial_3, 
+#          count_1, count_2, 
+#          count_3, id) %>%
+#   drop_na(count_3) %>%
+#   filter(count_3 > 0) %>%
+#   filter(is.na(binomial_3))
 
 # ---------------------------------------------------------- -----
 # DETECTIONS ----
 #   images_wms  ----
-images_wms <- 
-  read_csv(here(path_out, 
-                "images-wms_2020-2023_2023-11-06.csv"),
-           col_types = c(
-             image_id = "c", 
-             date = "D", 
-             time = "t", 
-             photo_type = "c", 
-             binomial_1 = "c", 
-             count_1 = "i", 
-             binomial_2 = "c", 
-             count_2 = "i", 
-             binomial_3 = "c", 
-             count_3 = "i", 
-             qc_certainty = "c", 
-             qc_by = "c", 
-             catalog_by = "c", 
-             good = "l",
-             review = "l",
-             error = "l", 
-             id = "c", 
-             image_n = "i", 
-             image_file = "c", 
-             date_time = "T"
-           )
-           ) 
+# images_wms <- 
+#   read_csv(here(path_out, 
+#                 "images-wms_2020-2023_2023-11-06.csv"),
+#            col_types = c(
+#              image_id = "c", 
+#              date = "D", 
+#              time = "t", 
+#              photo_type = "c", 
+#              binomial_1 = "c", 
+#              count_1 = "i", 
+#              binomial_2 = "c", 
+#              count_2 = "i", 
+#              binomial_3 = "c", 
+#              count_3 = "i", 
+#              qc_certainty = "c", 
+#              qc_by = "c", 
+#              catalog_by = "c", 
+#              good = "l",
+#              review = "l",
+#              error = "l", 
+#              id = "c", 
+#              image_n = "i", 
+#              image_file = "c", 
+#              date_time = "T"
+#            )
+#            ) 
+
+
 
 # Create subsets for multiple species in images ----
 list_columns_subset <- c("image_id", 
@@ -538,35 +593,50 @@ detections_30m <-
   recordTable_30m %>%
   clean_names() %>%
   mutate(year = year(date)) %>%
-  filter(year != 2016, 
-         year != 2021) 
+  filter(year %nin% c(2016, 2023, 2024)) 
 
 detections_30m_year <-
   detections_30m %>%
   group_by(year) %>%
   summarize(total = n()) 
 
-detections_30m_year_deer <- 
+detections_30m_year_species <-
   detections_30m %>%
   group_by(year, species) %>%
-  count() %>%
-  left_join(detections_30m_year, "year") %>%
-  filter(species %in% c("Odocoileus hemionus")) %>%
-  mutate(percent = n/total) %>%
-  ungroup()
+  summarize(total = n()) %>%
+  spread(year, total)
 
-detections_30m_year_deer %>%
-  summarize(mean = mean(percent), 
-            min = min(percent), 
-            max = max(percent), 
-            year_min = min(year), 
-            year_max = max(year))
+detections_30m_year_species %>%
+  write_csv(here(path_out,
+                 paste0(index_site, 
+                        "_images-wms_detections_30m_year_species_",
+                        Sys.Date(),
+                        ".csv")), 
+                 na = "0"
+  )
 
-detections_30m %>%
-  filter(species %in% c("Odocoileus hemionus")) %>%
-  group_by(year, station) %>%
-  count() %>%
-  spread(station, n)
+
+# detections_30m_year_deer <- 
+#   detections_30m %>%
+#   group_by(year, species) %>%
+#   count() %>%
+#   left_join(detections_30m_year, "year") %>%
+#   filter(species %in% c("Odocoileus hemionus")) %>%
+#   mutate(percent = n/total) %>%
+#   ungroup()
+# 
+# detections_30m_year_deer %>%
+#   summarize(mean = mean(percent), 
+#             min = min(percent), 
+#             max = max(percent), 
+#             year_min = min(year), 
+#             year_max = max(year))
+# 
+# detections_30m %>%
+#   filter(species %in% c("Odocoileus hemionus")) %>%
+#   group_by(year, station) %>%
+#   count() %>%
+#   spread(station, n)
 # ---------------------------------------------------------- -----
 # Create detection matrix for occupancy (single species) ----
 
