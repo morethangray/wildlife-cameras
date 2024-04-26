@@ -8,7 +8,7 @@ source(here("scripts/functions/fxn_utilities.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # Define site  ----
-index_site = "PWD"
+index_site = "MMP"
 # index_year = "2023"
 fxn_define_camera_project(index_site = index_site)
 #
@@ -100,7 +100,6 @@ datalist <- map_df(list_id, read_and_process_file_vault)
 # Combine the list of data frames into one data frame
 images_all <- bind_rows(datalist)
 
-
 # ---------------------------------------------------------- -----
 # COLLATE CATALOGED IMAGE TABLES -----
 # Function to process each file (done_catalog) ----
@@ -112,6 +111,7 @@ read_and_process_file_catalog <- function(index_site){
   list_id <- 
     dlog %>%
     filter(done_catalog == TRUE, 
+           # year_to != "2017",
            done_vault == FALSE) %>%
     arrange(id)  %>%
     pull(id)
@@ -148,7 +148,7 @@ list_id_tables <- unique(bind_images_all$id)
 
 deployments <- 
   dlog %>%
-  filter(id %in% list_id_tables_catalog) %>%
+  filter(id %in% unique(bind_images_all$id)) %>%
   select(-starts_with("done"), 
          -has_data,
          -use_data, 
@@ -174,20 +174,6 @@ deployments %>%
                         ".csv")
   ))
 #     
-# Image count ----
-images_wms %>%
-  group_by(year, species) %>%
-  summarize(total = n()) %>%
-  spread(year, total)
-
-detections_30m_year_species %>%
-  write_csv(here(path_out,
-                 paste0(index_site, 
-                        "_images-wms_detections_30m_year_species_",
-                        Sys.Date(),
-                        ".csv")), 
-            na = "0"
-  )
 # ---------------------------------------------------------- -----
 # CHECK IMAGE TABLES ----
 # images_all <- 
@@ -269,61 +255,84 @@ detections_30m_year_species %>%
 #            )
 #            ) 
 
-
-
 # Create subsets for multiple species in images ----
-list_columns_subset <- c("image_id", 
-                         "date_time", 
-                         "date", 
-                         "time", 
-                         "binomial", 
-                         "count",
-                         "image_n")
 
-subset_1 <- 
-  images_wms %>%
-  rename(binomial = binomial_1, 
-         count = count_1) %>%
-  select(all_of(list_columns_subset)) %>%
-  mutate(index_n = 1)
 
-subset_2  <- 
-  images_wms %>%
-  rename(binomial = binomial_2, 
-         count = count_2) %>%
-  select(all_of(list_columns_subset)) %>%
-  mutate(index_n = 2)
+fxn_create_binomial_subsets <- function(index_data){
+  
+  list_columns_subset <- c("image_id", 
+                           "date_time", 
+                           "date", 
+                           "time", 
+                           "binomial", 
+                           "count",
+                           "image_n")
+  
+  subset_1 <- 
+    index_data %>%
+    rename(binomial = binomial_1, 
+           count = count_1) %>%
+    select(all_of(list_columns_subset)) %>%
+    mutate(index_n = 1)
+  
+  subset_2  <- 
+    index_data %>%
+    rename(binomial = binomial_2, 
+           count = count_2) %>%
+    select(all_of(list_columns_subset)) %>%
+    mutate(index_n = 2)
+  
+  subset_3  <- 
+    index_data %>%
+    rename(binomial = binomial_3, 
+           count = count_3) %>%
+    select(all_of(list_columns_subset)) %>%
+    mutate(index_n = 3)
+  
+  join_subsets <- 
+    bind_rows(subset_1, 
+              subset_2, 
+              subset_3) %>%
+    filter(binomial %in% list_binomial_wms) %>%
+    mutate(camera = str_sub(image_id, 1, 4)) %>%
+    unite(binomial_camera_date, 
+          c(binomial, 
+            camera,
+            date), 
+          remove = FALSE) %>%
+    unite(binomial_camera_date_image,
+          c(binomial, 
+            camera,
+            date, 
+            image_n), 
+          remove = FALSE) %>%
+    relocate(image_id, 
+             date, 
+             time,
+             binomial, 
+             count, 
+             index_n)
+  
+  return(join_subsets)
+}
+join_subsets <- fxn_create_binomial_subsets(index_data = images_wms)
+# Summarize image count ----
+image_count_year_species <-
+  join_subsets %>%
+  mutate(year = year(date)) %>%
+  filter(year %nin% c(2016, 2017, 2023, 2024)) %>%
+  group_by(year, binomial) %>%
+  summarize(total = n()) %>%
+  spread(year, total)
 
-subset_3  <- 
-  images_wms %>%
-  rename(binomial = binomial_3, 
-         count = count_3) %>%
-  select(all_of(list_columns_subset)) %>%
-  mutate(index_n = 3)
-
-join_subsets <- 
-  bind_rows(subset_1, 
-            subset_2, 
-            subset_3) %>%
-  filter(binomial %in% list_binomial_wms) %>%
-  mutate(camera = str_sub(image_id, 1, 4)) %>%
-  unite(binomial_camera_date, 
-        c(binomial, 
-          camera,
-          date), 
-        remove = FALSE) %>%
-  unite(binomial_camera_date_image,
-        c(binomial, 
-          camera,
-          date, 
-          image_n), 
-        remove = FALSE) %>%
-  relocate(image_id, 
-           date, 
-           time,
-           binomial, 
-           count, 
-           index_n)
+image_count_year_species %>%
+  write_csv(here(path_out,
+                 paste0(index_site, 
+                        "_images-wms_image-count_year_species_",
+                        Sys.Date(),
+                        ".csv")), 
+            na = "0"
+  )
 #
 
 # [NOT RUN] ----
@@ -595,10 +604,10 @@ detections_30m <-
   mutate(year = year(date)) %>%
   filter(year %nin% c(2016, 2023, 2024)) 
 
-detections_30m_year <-
-  detections_30m %>%
-  group_by(year) %>%
-  summarize(total = n()) 
+# detections_30m_year <-
+#   detections_30m %>%
+#   group_by(year) %>%
+#   summarize(total = n()) 
 
 detections_30m_year_species <-
   detections_30m %>%
