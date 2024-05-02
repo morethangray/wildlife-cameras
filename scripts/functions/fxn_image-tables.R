@@ -1268,12 +1268,22 @@ fxn_table_create_blank <- function(index_site){
   
   fxn_define_camera_project(index_site)
   
+  # # List deployments for iteration ----
+  # list_id_blank <-
+  #   dlog %>%
+  #   filter(has_data == TRUE, 
+  #          done_exif == TRUE, 
+  #          done_blank == FALSE, 
+  #   ) %>%
+  #   pull(id)
+  
   # List deployments for iteration ----
   list_id_blank <-
     dlog %>%
     filter(has_data == TRUE, 
            done_exif == TRUE, 
-           done_blank == FALSE, 
+           done_blank == TRUE, 
+           done_catalog == FALSE, 
     ) %>%
     pull(id)
   
@@ -1408,11 +1418,13 @@ fxn_table_create_blank <- function(index_site){
     path_table_exif_file <- paste0(index_id,
                                    "_exif.csv")
     
-    file_move(path = here(path_exif,
-                          path_table_exif_file), 
-              new_path = here(path_exif_archive,
-                              path_table_exif_file))
-    
+    if(file.exists(path_table_exif_file)){
+      
+      file_move(path = here(path_exif,
+                            path_table_exif_file), 
+                new_path = here(path_exif_archive,
+                                path_table_exif_file))
+    }
   }
   
 }
