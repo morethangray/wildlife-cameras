@@ -1268,24 +1268,24 @@ fxn_table_create_blank <- function(index_site){
   
   fxn_define_camera_project(index_site)
   
-  # # List deployments for iteration ----
+  # List deployments for iteration ----
+  list_id_blank <-
+    dlog %>%
+    filter(has_data == TRUE,
+           done_exif == TRUE,
+           done_blank == FALSE,
+    ) %>%
+    pull(id)
+  
+  # List deployments for iteration ----
   # list_id_blank <-
   #   dlog %>%
   #   filter(has_data == TRUE, 
   #          done_exif == TRUE, 
-  #          done_blank == FALSE, 
+  #          done_blank == TRUE, 
+  #          done_catalog == FALSE, 
   #   ) %>%
   #   pull(id)
-  
-  # List deployments for iteration ----
-  list_id_blank <-
-    dlog %>%
-    filter(has_data == TRUE, 
-           done_exif == TRUE, 
-           done_blank == TRUE, 
-           done_catalog == FALSE, 
-    ) %>%
-    pull(id)
   
   # Collate exif files and join dlog ----
   exif_map_dlog <- 

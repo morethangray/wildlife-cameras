@@ -626,19 +626,21 @@ fxn_exif_collate_csv <- function(index_site){
   
   fxn_define_camera_project(index_site)
   
+  # Only files in main folder (no archived files)
   list_files <- list.files(here(path_exif),
                            recursive = FALSE,
-                           pattern = '*.csv')  
+                           pattern = '*.csv')
   
+  # # Recursive to include z_archive 
   # list_files <- list.files(here(path_exif),
   #                          recursive = TRUE,
   #                          pattern = '*.csv')  %>%
   #   as_tibble() %>%
-  #   mutate(id = str_remove(basename(value), 
+  #   mutate(id = str_remove(basename(value),
   #                          "_exif.csv")) %>%
   #   filter(id %in% list_id_blank) %>%
   #   pull(value)
-  
+  # 
   datalist <- list()
   for(index_csv in list_files){
     
