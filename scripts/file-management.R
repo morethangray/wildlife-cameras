@@ -146,10 +146,6 @@ fxn_table_create_blank(index_site)
 # Check blank image tables ----
 fxn_table_check_blank(index_site) 
 #
-# Create revised blank image tables ----
-# Replace old image table format 
-# For MMP _blank files that are not yet cataloged
-
 # ---------------------------------------------------------- -----
 # Check cataloged image tables ----
 # dir_table <- fxn_dir_table_map()
