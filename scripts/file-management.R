@@ -65,10 +65,10 @@ dir_summary_errors %>%
   filter(n>1)
 #
 #   Preview image folders to rename ----
-fxn_dir_jpg_rename(index_site, 
-                   index_year, 
-                   index_pattern = "YYYYMMDD_YYYYMMDD", 
-                   do_rename = FALSE)
+# fxn_dir_jpg_rename(index_site, 
+#                    index_year, 
+#                    index_pattern = "YYYYMMDD_YYYYMMDD", 
+#                    do_rename = FALSE)
 #
 #   Rename image folders ----
 # fxn_dir_jpg_rename(index_site, 
@@ -143,9 +143,13 @@ fxn_exif_summary_errors(index_site)
 fxn_table_create_blank(index_site)
 #
 # [BY HAND] Update done_blank in dlog ----
-# Check blank image tables
+# Check blank image tables ----
 fxn_table_check_blank(index_site) 
 #
+# Create revised blank image tables ----
+# Replace old image table format 
+# For MMP _blank files that are not yet cataloged
+
 # ---------------------------------------------------------- -----
 # Check cataloged image tables ----
 # dir_table <- fxn_dir_table_map()
