@@ -535,7 +535,6 @@ fxn_table_check_dlog <- function(index_data,
                              ends_early == TRUE,
                            FALSE, err_date_to))
         
-     
   # Rearrange columns ----
   final_data <- 
     checked_data %>%
@@ -571,9 +570,9 @@ fxn_table_check_dlog <- function(index_data,
       year_to) %>%
    
     # Replace FALSE with . for easier visual review
-    mutate(across(where(is.logical), 
-                  ~ifelse(. == FALSE, ".", 
-                          as.character(.))))
+      mutate(across(where(is.logical), 
+                    ~ifelse(is.na(.) | . == FALSE, ".", 
+                            as.character(.))))
   
   return(final_data)
 }
