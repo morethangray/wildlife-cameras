@@ -111,7 +111,7 @@ fxn_dir_table_map <- function(index_site,
 fxn_wrap_read_excel <- function(index_path){
   
   index_id <- str_sub(path_file(index_path), 1, 11)
-  cat(index_id, "\n")
+  cat("read ", index_id, "\n")
   
   data <- 
     read_excel(here(index_path),
