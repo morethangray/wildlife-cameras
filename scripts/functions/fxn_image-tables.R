@@ -1261,6 +1261,66 @@ fxn_conduct_checks_qc <- function(index_data,
              has_fatal = FALSE)
   }
 }
+#   fxn_check_count_format ----
+# Check count columns 
+fxn_check_count_format <- function(index_site, index_path){
+  
+  # 1. Read all xlsx files in a folder
+  file_paths <- list.files(path = index_path, 
+                           pattern = "\\.xlsx$", 
+                           full.names = TRUE)
+  
+  # 2. Create a tibble for each file
+  data_list <- map(file_paths, function(file_path) {
+    # Read the file
+    data <- read_xlsx(file_path)
+    
+    # Identify columns that start with 'count'
+    count_columns <- grep("^count", names(data), value = TRUE)
+    
+    # Gather information for each 'count' column
+    count_data <- map_dfr(count_columns, function(column_name) {
+      if(column_name %in% names(data)) {
+        # Extract distinct values and format of the column
+        distinct_values <- distinct(data, !!sym(column_name)) %>% pull(!!sym(column_name))
+        data_type <- class(data[[column_name]])[1]
+      } else {
+        # Default values if the column does not exist
+        distinct_values <- NA
+        data_type <- "NA"
+      }
+      
+      # Create a tibble for this column
+      tibble(
+        column_name = column_name,
+        format = data_type,
+        distinct_values = list(distinct_values)
+      )
+    })
+    
+    # Add file name to each row
+    mutate(count_data, File_Name = basename(file_path))
+  })
+  
+  # 3. Bind all tibbles into one
+  final_data <- bind_rows(data_list)
+  
+  # Print or return the final tibble
+  print(final_data)
+  
+  final_data_character <- 
+    final_data %>%
+    filter(format == "character")
+  
+  if(nrow(final_data_character) > 0){
+    print(final_data_character)
+    cat("ERROR: Count column format as character", "\n")
+  }else{
+    cat("No count column format as character", "\n")
+  }
+  
+}
+
 # Create ----
 #   fxn_table_create_blank ----
 # Convert _exif.csv to _blank.xlsx   

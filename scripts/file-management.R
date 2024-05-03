@@ -149,7 +149,7 @@ fxn_table_check_blank(index_site)
 #
 # ========================================================== -----
 # ========================================================== -----
-# PROCESS CATALOGED IMAGE TABLES  ----
+# PROCESS CATALOGED IMAGE TABLES (TIDY)  ----
 # ---------------------------------------------------------- -----
 # Review cataloged image tables ----
 # dir_table <- fxn_dir_table_map()
@@ -157,6 +157,10 @@ fxn_table_check_blank(index_site)
 # Check cataloged image table format and values ----
 fxn_table_check_catalog(index_site, 
                         index_type = "catalog")
+#
+# Check count format ----
+fxn_check_count_format(index_site, 
+                       index_path = path_table_catalog)
 #
 # Identify new photo_type_binomial combinations ----
 # OUTPUT: Writes _new-combinations.csv
@@ -176,7 +180,7 @@ fxn_tidy_for_qc(index_site)
 #
 # ========================================================== -----
 # ========================================================== -----
-# PROCESS QC IMAGE TABLES ----
+# PROCESS QC IMAGE TABLES (VAULT) ----
 # ---------------------------------------------------------- -----
 # Check QC'd image tables ----
 check_catalog <- fxn_table_check_catalog(index_site, 
@@ -191,5 +195,7 @@ fxn_tidy_for_vault(index_site)
 # README ----
 # author: Morgan Gray
 # created: 2023-01-09
+
+
 
 
