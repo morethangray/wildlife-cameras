@@ -1505,7 +1505,7 @@ fxn_tidy_for_qc <- function(index_site){
   for(index_file in list_files){
     # index_file <- list_files[1]
     
-    cat(str_sub(index_file, 1, 11), "\n")
+    # cat(str_sub(index_file, 1, 11), "\n")
 
     # Define index_n (binomial_, count_) ----
     index_path <- here(path_table_catalog, index_file)

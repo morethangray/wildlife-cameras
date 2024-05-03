@@ -185,6 +185,7 @@ fxn_tidy_for_qc(index_site)
 # Check QC'd image tables ----
 check_catalog <- fxn_table_check_catalog(index_site, 
                                          index_type = "qc") 
+check_catalog
 #
 check_qc <- fxn_table_check_qc(index_site)
 #
