@@ -375,7 +375,7 @@ fxn_jpg_rename_exif_01 <- function(index_site, index_year){
   # Identify the deployments to renumber 
   index_list <- unique(jpg_init$id)
   
-  # index_id = index_list[3]
+  # index_id = index_list[10]
   for(index_id in index_list){
     
     # Create helpers ----
@@ -458,8 +458,7 @@ fxn_jpg_rename_exif_01 <- function(index_site, index_year){
 
 
 #   fxn_jpg_check_rename  ----
-fxn_jpg_check_rename <- function(index_site, 
-                                 index_year){
+fxn_jpg_check_rename <- function(index_site, index_year){
   
   fxn_define_camera_project(index_site)
   
