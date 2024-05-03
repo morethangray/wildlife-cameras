@@ -1307,8 +1307,7 @@ fxn_check_count_format <- function(index_site, index_path){
   # 3. Bind all tibbles into one
   final_data <- bind_rows(data_list)
   
-  # Print or return the final tibble
-  return(final_data)
+  # 4. Filter to columns with character format
   
   final_data_character <- 
     final_data %>%

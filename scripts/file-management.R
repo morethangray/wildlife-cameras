@@ -186,6 +186,9 @@ fxn_tidy_for_qc(index_site)
 check_catalog <- fxn_table_check_catalog(index_site, 
                                          index_type = "qc") 
 check_catalog
+
+fxn_check_count_format(index_site, 
+                       index_path = path_table_qc)
 #
 check_qc <- fxn_table_check_qc(index_site)
 #
