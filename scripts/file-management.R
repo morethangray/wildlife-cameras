@@ -192,10 +192,3 @@ check_qc <- fxn_table_check_qc(index_site)
 fxn_tidy_for_vault(index_site)
 #
 # ========================================================== -----
-# README ----
-# author: Morgan Gray
-# created: 2023-01-09
-
-
-
-
