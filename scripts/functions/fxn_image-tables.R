@@ -3115,7 +3115,7 @@ list_hide_images_tidy_3 <-
 # _CLEAN ----
 # Simplify comments ----
 # index_path = path_table_qc
-fxn_simplify_comments <- function(index_site, index_path){
+fxn_get_distinct_comments <- function(index_site, index_path){
   
   fxn_define_camera_project(index_site)
   
