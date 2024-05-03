@@ -1,3 +1,4 @@
+fxn_define_camera_project(index_site)
 # Combine all files in directory ----
 # Set the directory path
 dir_path <- path_table_qc
@@ -9,9 +10,25 @@ file_paths <- list.files(path = dir_path, pattern = "\\.xlsx$", full.names = TRU
 combined_data <- file_paths %>% 
   map_df(~read_xlsx(.x))
 
+# ----
+# # Check for NA comments 
+# combined_data %>%
+#   distinct(comments) %>%
+#   rename(comments_init = comments) %>%
+#   left_join(lookup_comments, "comments_init")  %>%
+#   mutate(comments = ifelse(is.na(comments), 
+#                            comments_init, comments)) %>%
+#   filter(is.na(comments))  
+# 
+# # Compare comments with QC info
+# combined_data %>%
+#   filter(!is.na(qc_by)) %>%
+#   distinct(comments, 
+#            qc_certainty)
+
+# 
 # Get distinct comments ----
 # index_path = path_table_qc
-
 fxn_get_distinct_comments <- function(index_site, index_path){
   fxn_define_camera_project(index_site)
   
