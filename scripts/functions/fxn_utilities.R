@@ -32,7 +32,7 @@ path_r <- here()
 path_in <- here("input")
 
 # Create helpers ----
-#   For image tables
+# For image tables
 # Define exif columns to read  
 # Names match EXIF format
 list_exif_tags <- c("FileName",
@@ -81,6 +81,12 @@ lookup_certainty <-
                           "Pretty sure",
                           "Absolutely sure",
                           "Absolutely sure"))
+
+lookup_comments <- 
+  read_xlsx(here(path_in, 
+                "distinct-comments.xlsx"), 
+            sheet = "distinct-comments") %>%
+  distinct()
 
 # Create lists for data validations ----
 create_validation_lists <- function(index_site){
