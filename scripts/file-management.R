@@ -11,10 +11,10 @@ source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # Define site  ----
-index_site = "MMP"
+index_site = "PWD"
 index_year = "2024"
 # ========================================================== -----
-# ---------------------------------------------------------- -----
+# ========================================================== -----
 # Compare inventory tracking ----
 dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_catalog"]])
@@ -22,29 +22,31 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(result_list[["done_tidy"]])
 # 
 # Find new files ----
-# Folders  17M
+# Folders  0P, 0M
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #
 # Image tables 
 fxn_table_find_new(index_site)
 # 
 # Need processing ----
-#   Blank: 0P; 0M
-check_blank <- fxn_find_files_to_process("blank")
-#
-#   Tidy: 0P; 0M
-check_tidy <- fxn_find_files_to_process("tidy")
-# check_tidy %>%
-#   filter(need_process == TRUE)
-#
-#   Vault: 24P; 0M
-check_vault <- fxn_find_files_to_process("vault")
-# check_vault %>%
-#   filter(need_process == TRUE)
-#
-# ---------------------------------------------------------- -----
+# #   Blank: 0P; 0M
+# check_blank <- fxn_find_files_to_process("blank")
+# #
+# #   Tidy: 0P; 0M
+# check_tidy <- fxn_find_files_to_process("tidy")
+# # check_tidy %>%
+# #   filter(need_process == TRUE)
+# #
+# #   Vault: 24P; 0M
+# check_vault <- fxn_find_files_to_process("vault")
+# # check_vault %>%
+# #   filter(need_process == TRUE)
+# #
 # ========================================================== -----
-# Check image folders ----
+# ========================================================== -----
+# REVIEW IMAGE FOLDERS ----
+# ---------------------------------------------------------- -----
+# Check folder names ----
 # Compare folder naming convention with dlog 
 dir_summary_errors <- 
   fxn_dir_jpg_map(index_site,  index_year)  %>%
@@ -64,21 +66,23 @@ dir_summary_errors %>%
   count() %>%
   filter(n>1)
 #
-#   Preview image folders to rename ----
+#   [NOT RUN] Rename image folders ----
+# Preview names (without renaming):
 # fxn_dir_jpg_rename(index_site, 
 #                    index_year, 
 #                    index_pattern = "YYYYMMDD_YYYYMMDD", 
 #                    do_rename = FALSE)
 #
-#   Rename image folders ----
 # fxn_dir_jpg_rename(index_site, 
 #                    index_year, 
 #                    index_pattern = "YYYYMMDD_YYYYMMDD", 
 #                    do_rename = TRUE)
-# #
+# 
+# ========================================================== -----
+# ========================================================== -----
+# PROCESS IMAGE FILES ----
 # ---------------------------------------------------------- -----
-# Check image files ----
-#   Map jpg files ----
+# Map jpg files ----
 # jpg_map_files <- fxn_jpg_map_files(index_site, 
 #                                    index_year,
 #                                    done_rename = FALSE)
@@ -87,45 +91,42 @@ dir_summary_errors %>%
 #   group_by(id) %>%
 #   count()
                   
-#   Check for timestamp errors -----
+# Check for timestamp errors -----
 #   - Confirms image timestamp is within survey dates
 #   - Checks for file size = 0 (corrupt files)
 fxn_jpg_timestamp_check(index_site, index_year)
 #
-# [BY HAND] Update has_data in dlog ----
+#   [BY HAND] Update has_data in dlog ----
 #
-#   Preview file naming conventions ----
+# Preview file naming conventions ----
 #   - Count number of images with and without parentheses
 #   - Returns a table with examples for 0, 1, 2+ parentheses
 jpg_summary <- fxn_jpg_summary(index_site, 
                                index_year,
                                done_rename = FALSE)
 
-#   Rename images without parentheses ----
+# Rename images & create _exif files ----
 # Uses regex to replace "2019:01:01" with "2019-01-01"
 fxn_jpg_rename_exif_01(index_site, index_year)
 #
-# [BY HAND] Update done_rename in dlog ----
-#   Check renamed files ----
+#   [BY HAND] Update done_rename in dlog ----
+# Check renamed files ----
 check_rename <- fxn_jpg_check_rename(index_site, index_year) 
 # # Rename files if needed
 # fxn_jpg_rename_redo(jpg_rename_check)
 #
-# [BY HAND] Update done_exif in dlog ----
+#   [BY HAND] Update done_exif in dlog ----
 #
 # ---------------------------------------------------------- -----
-# Create exif tables ----
-# fxn_exif_create(index_site, index_year)
-#
-#   Summarize survey attributes ----
+# Summarize survey attributes ----
 # Use as source for date_img_from, date_img_to, count
 fxn_exif_summary(index_site) %>%
   remove_empty("cols")
 #
-#   Check for exif errors ----
+# Check for exif errors ----
 fxn_exif_summary_errors(index_site)
 #
-# [BY HAND] Update deployment log as follows: -----
+#   [BY HAND] Update deployment log as follows: -----
 #
 # When id is PRESENT in exif_summary_errors: 
 #   - flag error with done_fix = F until addressed
@@ -142,43 +143,47 @@ fxn_exif_summary_errors(index_site)
 # Create blank image tables ----
 fxn_table_create_blank(index_site)
 #
-# [BY HAND] Update done_blank in dlog ----
+#   [BY HAND] Update done_blank in dlog ----
 # Check blank image tables ----
 fxn_table_check_blank(index_site) 
 #
+# ========================================================== -----
+# ========================================================== -----
+# PROCESS CATALOGED IMAGE TABLES  ----
 # ---------------------------------------------------------- -----
-# Check cataloged image tables ----
+# Review cataloged image tables ----
 # dir_table <- fxn_dir_table_map()
 #
-# Check image table format and values
+# Check cataloged image table format and values ----
 fxn_table_check_catalog(index_site, 
                         index_type = "catalog")
 #
-# Identify new photo_type_binomial combinations 
+# Identify new photo_type_binomial combinations ----
 # OUTPUT: Writes _new-combinations.csv
 fxn_new_photo_type_binomial_all(index_site, 
                                 index_type = "catalog")
 #
-# TO DO: FUNCTION TO COMPARE ERRORS WITH DLOG ----
-# Compare error flags with dlog
+# Compare error flags with dlog ----
 # These should be in dlog; add to dlog if not 
 check_errors <- 
   fxn_table_check_errors(index_site,
                          index_type = "catalog")
 check_errors
 #
-# ---------------------------------------------------------- -----
-# Create tidy image tables ----
+# Create _tidy image tables ----
+#
 fxn_tidy_for_qc(index_site)
 #
+# ========================================================== -----
+# ========================================================== -----
+# PROCESS QC IMAGE TABLES ----
 # ---------------------------------------------------------- -----
 # Check QC'd image tables ----
-
 check_catalog <- fxn_table_check_catalog(index_site, 
                                          index_type = "qc") 
 #
 check_qc <- fxn_table_check_qc(index_site)
-# ---------------------------------------------------------- -----
+#
 # Create clean image tables in vault ----
 fxn_tidy_for_vault(index_site)
 #
