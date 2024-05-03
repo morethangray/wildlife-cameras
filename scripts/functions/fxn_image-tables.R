@@ -1727,7 +1727,10 @@ fxn_tidy_for_vault <- function(index_site){
       fxn_add_flags() %>%
       fxn_revise_qc_by_for_sentence_case() 
     
-    # data_tidy: Tidy values for binomial and count  ----
+    # data_raw %>%
+    #   distinct(comments)
+    
+    # data_tidy: Tidy values for binomial, count, comments  ----
     data_tidy <- 
       fxn_tidy_binomial_count(index_data = data_raw,
                               index_type = "qc", 
@@ -1745,10 +1748,15 @@ fxn_tidy_for_vault <- function(index_site){
                                  image_n_jpg),
              
              image_id = str_remove(image_file,
-                                   ".JPG")) %>%
+                                   ".JPG"))  %>%
+      rename(comments_init = comments) %>%
+      left_join(lookup_comments, "comments_init") %>%
+      mutate(comments = ifelse(is.na(comments), 
+                               comments_init, comments)) %>%
       select(-id_init, 
              -image_n_pad, 
-             -image_n_jpg)  
+             -image_n_jpg, 
+             -comments_init)  
    
     first_image_n <- min(data_tidy$image_n, na.rm = TRUE)
     last_image_n <- max(data_tidy$image_n, na.rm = TRUE)
@@ -3107,12 +3115,6 @@ list_hide_images_tidy_3 <-
 # _CLEAN ----
 # Simplify comments ----
 # index_path = path_table_qc
-list_id_qc <- 
-  dlog %>%
-  filter(done_qc == TRUE, 
-         done_vault == FALSE) %>%
-  pull(id)
-
 fxn_simplify_comments <- function(index_site, index_path){
   
   fxn_define_camera_project(index_site)
@@ -3146,9 +3148,9 @@ fxn_simplify_comments <- function(index_site, index_path){
   # 3. Create a tibble with all distinct comments
   final_data <- tibble(distinct_comments = distinct_comments)
 }
-final_data %>%
-  write_csv(here(path_out, 
-                 "distinct-comments.csv"))
+# final_data %>%
+#   write_csv(here(path_out, 
+#                  "distinct-comments.csv"))
  
 # Revise id fields: image_id, image_file ----
 # ========================================================== -----
