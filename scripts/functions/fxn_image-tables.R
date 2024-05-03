@@ -1265,6 +1265,8 @@ fxn_conduct_checks_qc <- function(index_data,
 # Check count columns 
 fxn_check_count_format <- function(index_site, index_path){
   
+  fxn_define_camera_project(index_site)
+  
   # 1. Read all xlsx files in a folder
   file_paths <- list.files(path = index_path, 
                            pattern = "\\.xlsx$", 
@@ -1306,7 +1308,7 @@ fxn_check_count_format <- function(index_site, index_path){
   final_data <- bind_rows(data_list)
   
   # Print or return the final tibble
-  print(final_data)
+  return(final_data)
   
   final_data_character <- 
     final_data %>%
