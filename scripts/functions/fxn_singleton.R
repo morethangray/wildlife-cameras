@@ -28,7 +28,7 @@ combined_data <- file_paths %>%
 
 # 
 # Get distinct comments ----
-# index_path = path_table_qc
+# index_path = path_vault
 fxn_get_distinct_comments <- function(index_site, index_path){
   fxn_define_camera_project(index_site)
   
@@ -61,6 +61,28 @@ fxn_get_distinct_comments <- function(index_site, index_path){
   # 3. Create a tibble with all distinct comments
   final_data <- tibble(distinct_comments = distinct_comments)
 }
-# final_data %>%
-#   write_csv(here(path_out, 
-#                  "distinct-comments.csv"))
+
+
+final_data %>%
+  rename(comments = distinct_comments) %>%
+  rename(comments_init = comments) %>%
+  left_join(lookup_comments, "comments_init") %>%
+  filter(is.na(comments))  
+# %>%
+#   fxn_simplify_comments() %>%
+#   distinct() %>%
+#   write_csv(here(path_out,
+#                  "distinct-comments_vault.csv"))
+
+# fxn_simplify_comments ----
+fxn_simplify_comments <- function(index_data){
+  
+  index_data  %>%
+    rename(comments_init = comments) %>%
+    left_join(lookup_comments, "comments_init")  %>%
+    mutate(comments = ifelse(is.na(comments),
+                             comments_init, comments)) %>%
+    select(-comments_init)
+
+    
+}
