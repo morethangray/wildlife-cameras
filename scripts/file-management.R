@@ -10,8 +10,22 @@ source(here("scripts/functions/fxn_folders.R"))
 source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
+# README -----
+# Output files are saved to path_out
+#   K:\wildlife-cameras\output\<SITE>
+# When an output file is created:
+#   Existing file renamed with _date, moved to z_archive
+#   New file is saved in main folder
+# A new _error file created ONLY when errors are found
+#   If there aren't errors, no new file is made
+# ---------------------------------------------------------- -----
 # Define site  ----
-index_site = "PWD"
+# PWD: Pepperwood WPI grid
+# MMP: Modini WPI grid
+# FOR: Pepperwood forest plots
+# DEN: DENDRA D-RAI cameras
+#
+index_site = "DEN"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----
@@ -104,14 +118,16 @@ fxn_jpg_timestamp_check(index_site, index_year)
 jpg_summary <- fxn_jpg_summary(index_site, 
                                index_year,
                                done_rename = FALSE)
-
+#
 # Rename images & create _exif files ----
 # Uses regex to replace "2019:01:01" with "2019-01-01"
 fxn_jpg_rename_exif_01(index_site, index_year)
 #
 #   [BY HAND] Update done_rename in dlog ----
+#
 # Check renamed files ----
 check_rename <- fxn_jpg_check_rename(index_site, index_year) 
+#
 # # Rename files if needed
 # fxn_jpg_rename_redo(jpg_rename_check)
 #
@@ -123,8 +139,15 @@ check_rename <- fxn_jpg_check_rename(index_site, index_year)
 fxn_exif_summary(index_site) %>%
   remove_empty("cols")
 #
+#   [BY HAND] Review _exif-summary ----
+# File located in K:\wildlife-cameras\output\<SITE>
+#
 # Check for exif errors ----
 fxn_exif_summary_errors(index_site)
+#
+#   [BY HAND] Review _exif-summary_errors ----
+# File located in K:\wildlife-cameras\output\<SITE>
+# No new file will be created if there are no errors
 #
 #   [BY HAND] Update deployment log as follows: -----
 #
@@ -144,8 +167,12 @@ fxn_exif_summary_errors(index_site)
 fxn_table_create_blank(index_site)
 #
 #   [BY HAND] Update done_blank in dlog ----
+#
 # Check blank image tables ----
 fxn_table_check_blank(index_site) 
+#
+#   [BY HAND] Review _blank_error-summary ----
+# File located in K:\wildlife-cameras\output\<SITE>
 #
 # ========================================================== -----
 # ========================================================== -----
@@ -196,3 +223,4 @@ check_qc <- fxn_table_check_qc(index_site)
 fxn_tidy_for_vault(index_site)
 #
 # ========================================================== -----
+

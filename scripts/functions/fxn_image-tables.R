@@ -577,7 +577,7 @@ fxn_table_check_blank <- function(index_site){
     fxn_archive_old_csv(index_file_name = index_file_name)
     
     write_csv(tbl_errors,
-              here(path__out,
+              here(path_out,
                    index_file_name), 
               na = "")
     

@@ -713,7 +713,7 @@ fxn_exif_summary_errors <- function(index_site) {
   # Filter rows with any "err_" column set to TRUE
   id_errors <- 
     exif_summary %>%
-    filter(if_any(err_cols, ~ . == TRUE))
+    filter(if_any(all_of(err_cols), ~ . == TRUE))
   
   # Join with dlog and rearrange columns
   exif_errors <-
