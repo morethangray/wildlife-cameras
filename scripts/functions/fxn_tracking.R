@@ -269,10 +269,30 @@ fxn_table_find_new <- function(index_site) {
 # _final files that need to be made into _tidy
 # _qc files that need to be made into _clean and archived
 
+# index_type = "files"
 # index_type = "vault"
 fxn_find_files_to_process <- function(index_type){
   
+  # Archive files that are in vault ----
+  fxn_archive_final_dupes()
   # Identify files that need processing ---- 
+  # Filter dlog using done_ columns 
+  # Need exif 
+  if(index_type == "exif"){
+    filtered_dlog <- 
+      dlog %>%
+      filter(has_data == TRUE, 
+             done_exif %in% c("FALSE", "REDO"))
+    
+    index_path <- 
+      normalizePath(path_exif, 
+                    winslash = "/", 
+                    mustWork = FALSE)
+    
+    index_message <- paste0("ACTION NEEDED - Create exif image tables for ")
+    
+  }
+  
   # Need blank 
   if(index_type == "blank"){
     filtered_dlog <- 
@@ -285,7 +305,7 @@ fxn_find_files_to_process <- function(index_type){
                     winslash = "/", 
                     mustWork = FALSE)
     
-    index_message <- paste0("ACTION NEEDED - Create blank image tables:")
+    index_message <- paste0("ACTION NEEDED - Create blank image tables for ")
     
   }
   
@@ -301,7 +321,7 @@ fxn_find_files_to_process <- function(index_type){
                     winslash = "/", 
                     mustWork = FALSE)
     
-    index_message <- paste0("ACTION NEEDED - Create tidy image tables:")
+    index_message <- paste0("ACTION NEEDED - Create tidy image tables for ")
   }
   # Need vault 
   if(index_type == "vault"){
@@ -315,13 +335,12 @@ fxn_find_files_to_process <- function(index_type){
                     winslash = "/", 
                     mustWork = FALSE)
     
-    index_message <- paste0("ACTION NEEDED - Move to vault:")
+    index_message <- paste0("ACTION NEEDED - Move to vault: ")
   }
   
   # List id that need processing ----
   list_id_need <- unique(filtered_dlog$id)
   n_files_need <- length(list_id_need)
-  
   
   # Identify all files by type ----
   # List the id that need processing
@@ -341,145 +360,264 @@ fxn_find_files_to_process <- function(index_type){
              need_process) 
   
   if(index_type == "vault"){
+    
     all_files <- 
       all_files %>%
-      filter(str_detect(path, "final_tidy_qc"))
+      mutate(in_process = str_detect(file_name,
+                                     regex("pro",
+                                           ignore_case = TRUE))) %>%
+      filter(str_detect(path, "final_tidy_qc")) %>%
+      filter(in_process == FALSE)
+             
   }
   
+  # Identify missing files and deployments ----
+  # Deployments with files in folder, but missing from dlog
+  missing_dlog <- setdiff(all_files$id, list_id_need)
+  # Deployments in dlog, but missing files in folder
+  missing_files <- setdiff(list_id_need, all_files$id)
   
-  # Summarize files by status
+  # Identify deployments with multiple files 
+  list_id_has_multiple <- 
+    all_files %>%
+    group_by(id) %>%
+    count() %>%
+    filter(n>1) %>%
+    pull(id)
+  
+  if(length(list_id_has_multiple) > 0){
+    cat("Multiple files for",  length(list_id_has_multiple), "deployments", "\n")
+    print(list_id_has_multiple)
+    }
+  
+  # Summarize files by status in dlog ----
   summarize_files <- 
     all_files %>%
     mutate(process_type = index_type) %>%
     group_by(process_type, need_process) %>%
     count() 
   
+  # Identify deployments that need processing ----
   if(nrow(summarize_files) > 0){
+    
     n_files <- 
       summarize_files %>%
       filter(need_process == TRUE) %>%
       pull(n)
+    
+    
+    # Write messages based on type of processing needed
+    if(length(n_files) > 0){
+      # For deployments with additional file tracking issues
+      if(n_files != n_files_need){
+        
+        # When there are MORE files in data folder than expected from dlog
+        if(length(missing_dlog) > 0){
+          message(paste0("ACTION NEEDED - Update done_", index_type, " for ", length(missing_dlog), " deployments in dlog"))
+          
+          # List the file info
+          print(all_files %>%
+                   filter(id %in% missing_dlog))
+         
+        }
+        
+        # When there are FEWER files in data folder than expected from dlog
+        if(length(missing_files) > 0){
+          message(paste0("ACTION NEEDED - Check Intern Drop Folders for ", length(missing_files)," missing ", index_type, " files"))
+
+          # List the file info
+          print(filtered_dlog %>%
+            filter(id %in% missing_files) %>%
+            select(id, 
+                   done_fix, 
+                   done_rename,
+                   done_exif,
+                   done_blank,
+                   done_catalog, 
+                   done_tidy, 
+                   done_qc,
+                   done_vault, 
+                   starts_with("error")))
+        }
+      }
+      # For all files that need processing
+      message(paste0(index_message,  n_files, " files"))
+    }
+    if(length(n_files) == 0){
+      message(paste0("No action needed for ", index_type))
+    }
+        
   }else{
-    n_files <- 0
+    if(nrow(filtered_dlog) == 0){
+      message(paste0("No action needed for ", index_type))
+    }
+    if(nrow(filtered_dlog) > 0){
+      message(paste0("ACTION NEEDED - Create ", index_type, " tables for ", length(missing_files), " deployments in dlog"))
+     
+       # List the file info
+      # print(filtered_dlog %>%
+      #         filter(id %in% missing_files) %>%
+      #         select(id, 
+      #                done_fix, 
+      #                done_rename,
+      #                done_exif,
+      #                done_blank,
+      #                done_catalog, 
+      #                done_tidy, 
+      #                done_qc,
+      #                done_vault, 
+      #                starts_with("error")))
+      
+    }
   }
-  
-  print(summarize_files)
-  
-  if(n_files == n_files_need){
-    cat("No action needed: file count matches dlog for", index_type, "\n")
-  }else{
-    cat(index_message, n_files_need-n_files, "files", "\n")
-  }
-  
+ 
   return(all_files)
   
 }
-# Move done_ files ----
-fxn_unarchive_done_files <- function(index_type){
+#
+# # Archive _final files when _final_qc is present ----
+# #   fxn_archive_final_dupes  ----
+fxn_archive_final_dupes <- function(){
+#   
+  index_path = path_table_qc
+
+  dlog_vault <- 
+    dlog %>%
+    filter(done_vault == TRUE)
   
-  # Identify files that are done ---- 
-  
-  if(index_type == "exif"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_exif == TRUE)
-  }
-  
-  if(index_type == "blank"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_blank == TRUE)
-  }
-  
-  if(index_type == "catalog"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_catalog == TRUE)
-  }
-  
-  if(index_type == "tidy"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_tidy == TRUE)
-  }
-  
-  if(index_type == "qc"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_qc == TRUE)
-  }
-  
-  
-  # List id that are done
-  list_id_done <- unique(filtered_dlog$id)
-  
-  # Create paths for main and archive folders ----
-  list_types <- c("exif",
-                  "blank",
-                  "catalog",
-                  "tidy",
-                  "qc")
-  
-  lookup_paths <- 
-    tibble(index_type = list_types, 
-           index_path_init = paste0("path_table_", index_type),
-           index_path_rev = str_replace(index_path_init, 
-                                        "path_table_exif", 
-                                        "path_exif"),
-           index_path_archive = paste0(index_path_rev, "_archive"), 
-           index_path = str_replace(index_path_rev,
-                                    "path_table_tidy", 
-                                    "path_table_qc")) %>%
-    select(-index_path_init, 
-           -index_path_rev)
-  
-  filtered_paths <-  
-    lookup_paths %>%
-    filter(index_type == {{index_type}})
-  
-  index_path <- 
-    normalizePath(get(filtered_paths$index_path), 
-                  winslash = "/", 
-                  mustWork = FALSE)
-  index_path_archive <- 
-    normalizePath(get(filtered_paths$index_path_archive), 
-                  winslash = "/", 
-                  mustWork = FALSE)
-  
-  # Identify all files by type ----
-  all_files <- 
+  # Map files in folder
+  all_files <-
     tibble(path =
              dir_ls(path = index_path,
-                    recurse = TRUE,
+                    recurse = FALSE,
                     type = "file")) %>%
     mutate(file_name = path_file(path),
-           id = str_sub(file_name, 1, 11),
-           path_dir = path_dir(path)) %>%
-    filter(str_detect(id, "Thumbs") == FALSE) %>%
-    relocate(id,
-             path_dir) 
+           id = str_sub(file_name, 1, 11)) 
   
-  # Identify archived files that need processing ----
-  # Identify files in archive that are NOT in list_id_done
-  paths_to_move <- 
+  files_to_archive <-
     all_files %>%
-    filter(path_dir == index_path_archive) %>%
-    filter(id %nin% list_id_done) %>%
-    mutate(path_new = here(index_path, file_name))  %>%
-    relocate(id,
-             path_dir, 
-             path_new) 
-  
-  if(nrow(paths_to_move) > 0){
+    filter(id %in% unique(dlog_vault$id)) %>%
     
-    
-  }
-  # Move files out of archive into main folder ----
-  # Unarchive files
-  
-  file_move(path = paths_to_move$path, 
-            new_path = paths_to_move$path_new)
-  
-}
+    mutate(is_qc = str_detect(file_name, "tidy_qc"), 
+           folder_new = ifelse(is_qc == TRUE,
+                             here(index_path,  "z_archive/"), 
+                             here(index_path, "z_archive/image-tables_final_tidy")), 
+           path_new = here(folder_new, file_name)) %>%
+      select(path_new, path) 
 
+  # Move _tidy files to archive
+  file_move(path = files_to_archive$path,
+            new_path = files_to_archive$path_new)
+
+#   
+}
+# # Unarchive done_ files ----
+# #   fxn_unarchive_done_files ----
+# fxn_unarchive_done_files <- function(index_type){
+#   
+#   # Identify files that are done ---- 
+#   
+#   if(index_type == "exif"){
+#     filtered_dlog <- 
+#       dlog %>%
+#       filter(done_exif == TRUE)
+#   }
+#   
+#   if(index_type == "blank"){
+#     filtered_dlog <- 
+#       dlog %>%
+#       filter(done_blank == TRUE)
+#   }
+#   
+#   if(index_type == "catalog"){
+#     filtered_dlog <- 
+#       dlog %>%
+#       filter(done_catalog == TRUE)
+#   }
+#   
+#   if(index_type == "tidy"){
+#     filtered_dlog <- 
+#       dlog %>%
+#       filter(done_tidy == TRUE)
+#   }
+#   
+#   if(index_type == "qc"){
+#     filtered_dlog <- 
+#       dlog %>%
+#       filter(done_qc == TRUE)
+#   }
+#   
+#   
+#   # List id that are done
+#   list_id_done <- unique(filtered_dlog$id)
+#   
+#   # Create paths for main and archive folders ----
+#   list_types <- c("exif",
+#                   "blank",
+#                   "catalog",
+#                   "tidy",
+#                   "qc")
+#   
+#   lookup_paths <- 
+#     tibble(index_type = list_types, 
+#            index_path_init = paste0("path_table_", index_type),
+#            index_path_rev = str_replace(index_path_init, 
+#                                         "path_table_exif", 
+#                                         "path_exif"),
+#            index_path_archive = paste0(index_path_rev, "_archive"), 
+#            index_path = str_replace(index_path_rev,
+#                                     "path_table_tidy", 
+#                                     "path_table_qc")) %>%
+#     select(-index_path_init, 
+#            -index_path_rev)
+#   
+#   filtered_paths <-  
+#     lookup_paths %>%
+#     filter(index_type == {{index_type}})
+#   
+#   index_path <- 
+#     normalizePath(get(filtered_paths$index_path), 
+#                   winslash = "/", 
+#                   mustWork = FALSE)
+#   index_path_archive <- 
+#     normalizePath(get(filtered_paths$index_path_archive), 
+#                   winslash = "/", 
+#                   mustWork = FALSE)
+#   
+#   # Identify all files by type ----
+#   all_files <- 
+#     tibble(path =
+#              dir_ls(path = index_path,
+#                     recurse = TRUE,
+#                     type = "file")) %>%
+#     mutate(file_name = path_file(path),
+#            id = str_sub(file_name, 1, 11),
+#            path_dir = path_dir(path)) %>%
+#     filter(str_detect(id, "Thumbs") == FALSE) %>%
+#     relocate(id,
+#              path_dir) 
+#   
+#   # Identify archived files that need processing ----
+#   # Identify files in archive that are NOT in list_id_done
+#   paths_to_move <- 
+#     all_files %>%
+#     filter(path_dir == index_path_archive) %>%
+#     filter(id %nin% list_id_done) %>%
+#     mutate(path_new = here(index_path, file_name))  %>%
+#     relocate(id,
+#              path_dir, 
+#              path_new) 
+#   
+#   if(nrow(paths_to_move) > 0){
+#     
+#     
+#   }
+#   # Move files out of archive into main folder ----
+#   # Unarchive files
+#   
+#   file_move(path = paths_to_move$path, 
+#             new_path = paths_to_move$path_new)
+#   
+# }
+# 
 # ========================================================== -----

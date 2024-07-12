@@ -25,7 +25,7 @@ source(here("scripts/functions/fxn_image-tables.R"))
 # FOR: Pepperwood forest plots
 # DEN: DENDRA D-RAI cameras
 #
-index_site = "PWD"
+index_site = "MMP"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----
@@ -34,28 +34,32 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_catalog"]])
 # View(dlog_ilog_compare[["done_qc"]])
 # View(dlog_ilog_compare[["done_tidy"]])
+# View(dlog_ilog_compare[["done_vault"]])
 # 
 # Find new files ----
-# Folders  0P, 0M
+# Folders  0P, 25M
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #
 # Image tables 
 fxn_table_find_new(index_site)
 # 
 # Need processing ----
+#   Exif: 0P; 0M
+check_exif <- fxn_find_files_to_process("exif")
+
 #   Blank: 0P; 0M
 check_blank <- fxn_find_files_to_process("blank")
 #
-#   Tidy: 0P; 0M
+#   Tidy: 0P; 16M
 check_tidy <- fxn_find_files_to_process("tidy")
-check_tidy %>%
-  filter(need_process == TRUE)
+# check_tidy %>%
+#   filter(need_process == TRUE)
 #
-#   Vault: 24P; 0M
+#   Vault: 0P; 10M
 check_vault <- fxn_find_files_to_process("vault")
-check_vault %>%
-  filter(need_process == TRUE, 
-         str_detect(path, "final_tidy_qc"))
+# check_vault %>%
+#   filter(need_process == TRUE) %>%
+#   pull(id)
 # #
 # ========================================================== -----
 # ========================================================== -----
@@ -206,6 +210,9 @@ check_errors
 #
 fxn_tidy_for_qc(index_site)
 #
+#   [BY HAND] Update done_tidy in dlog ----
+#
+
 # ========================================================== -----
 # ========================================================== -----
 # PROCESS QC IMAGE TABLES (VAULT) ----
@@ -222,6 +229,8 @@ check_qc <- fxn_table_check_qc(index_site)
 #
 # Create clean image tables in vault ----
 fxn_tidy_for_vault(index_site)
+#
+#   [BY HAND] Update done_vault in dlog ----
 #
 # ========================================================== -----
 

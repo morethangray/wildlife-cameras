@@ -260,7 +260,8 @@ fxn_define_camera_project <- function(index_site){
   dlog <<-
     fxn_dlog_get(here(path_site, 
                       file_name_dlog)) %>%
-    tidyr::drop_na(id)  
+    tidyr::drop_na(id) %>%
+    arrange(id)
   # tidyr::drop_na(n_survey) %>%
   # filter(n_survey %nin% "N/A")
   
