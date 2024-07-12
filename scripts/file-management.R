@@ -25,7 +25,7 @@ source(here("scripts/functions/fxn_image-tables.R"))
 # FOR: Pepperwood forest plots
 # DEN: DENDRA D-RAI cameras
 #
-index_site = "DEN"
+index_site = "PWD"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----
@@ -33,7 +33,7 @@ index_year = "2024"
 dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_catalog"]])
 # View(dlog_ilog_compare[["done_qc"]])
-# View(result_list[["done_tidy"]])
+# View(dlog_ilog_compare[["done_tidy"]])
 # 
 # Find new files ----
 # Folders  0P, 0M
@@ -43,18 +43,19 @@ new_folders <- fxn_dir_jpg_find_new(index_site, index_year)
 fxn_table_find_new(index_site)
 # 
 # Need processing ----
-# #   Blank: 0P; 0M
-# check_blank <- fxn_find_files_to_process("blank")
-# #
-# #   Tidy: 0P; 0M
-# check_tidy <- fxn_find_files_to_process("tidy")
-# # check_tidy %>%
-# #   filter(need_process == TRUE)
-# #
-# #   Vault: 24P; 0M
-# check_vault <- fxn_find_files_to_process("vault")
-# # check_vault %>%
-# #   filter(need_process == TRUE)
+#   Blank: 0P; 0M
+check_blank <- fxn_find_files_to_process("blank")
+#
+#   Tidy: 0P; 0M
+check_tidy <- fxn_find_files_to_process("tidy")
+check_tidy %>%
+  filter(need_process == TRUE)
+#
+#   Vault: 24P; 0M
+check_vault <- fxn_find_files_to_process("vault")
+check_vault %>%
+  filter(need_process == TRUE, 
+         str_detect(path, "final_tidy_qc"))
 # #
 # ========================================================== -----
 # ========================================================== -----

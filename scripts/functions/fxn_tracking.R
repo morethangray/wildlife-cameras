@@ -264,6 +264,7 @@ fxn_table_find_new <- function(index_site) {
 
 # ---------------------------------------------------------- -----
 # Identify files that need management ----
+#   fxn_find_files_to_process ----
 # _exif files that need to be made into _blank
 # _final files that need to be made into _tidy
 # _qc files that need to be made into _clean and archived
@@ -284,6 +285,8 @@ fxn_find_files_to_process <- function(index_type){
                     winslash = "/", 
                     mustWork = FALSE)
     
+    index_message <- paste0("ACTION NEEDED - Create blank image tables:")
+    
   }
   
   # Need tidy 
@@ -297,6 +300,8 @@ fxn_find_files_to_process <- function(index_type){
       normalizePath(path_table_catalog, 
                     winslash = "/", 
                     mustWork = FALSE)
+    
+    index_message <- paste0("ACTION NEEDED - Create tidy image tables:")
   }
   # Need vault 
   if(index_type == "vault"){
@@ -309,10 +314,13 @@ fxn_find_files_to_process <- function(index_type){
       normalizePath(path_table_qc, 
                     winslash = "/", 
                     mustWork = FALSE)
+    
+    index_message <- paste0("ACTION NEEDED - Move to vault:")
   }
   
-  # List id that need processing
+  # List id that need processing ----
   list_id_need <- unique(filtered_dlog$id)
+  n_files_need <- length(list_id_need)
   
   
   # Identify all files by type ----
@@ -331,6 +339,12 @@ fxn_find_files_to_process <- function(index_type){
     filter(str_detect(id, "Thumbs") == FALSE) %>%
     relocate(id, 
              need_process) 
+  
+  if(index_type == "vault"){
+    all_files <- 
+      all_files %>%
+      filter(str_detect(path, "final_tidy_qc"))
+  }
   
   
   # Summarize files by status
@@ -351,10 +365,10 @@ fxn_find_files_to_process <- function(index_type){
   
   print(summarize_files)
   
-  if(n_files == length(list_id_need)){
-    cat("PASS: file count matches dlog", "\n")
+  if(n_files == n_files_need){
+    cat("No action needed: file count matches dlog for", index_type, "\n")
   }else{
-    cat("ERROR: file count is ", n_files, "; dlog count is ", length(list_id_need), "\n")
+    cat(index_message, n_files_need-n_files, "files", "\n")
   }
   
   return(all_files)
