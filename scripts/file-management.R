@@ -50,12 +50,12 @@ check_exif <- fxn_find_files_to_process("exif")
 #   Blank: 0P; 0M
 check_blank <- fxn_find_files_to_process("blank")
 #
-#   Tidy: 0P; 16M
+#   Tidy: 0P; 0M
 check_tidy <- fxn_find_files_to_process("tidy")
 # check_tidy %>%
 #   filter(need_process == TRUE)
 #
-#   Vault: 0P; 10M
+#   Vault: 0P; 0M
 check_vault <- fxn_find_files_to_process("vault")
 # check_vault %>%
 #   filter(need_process == TRUE) %>%
@@ -116,7 +116,9 @@ dir_summary_errors %>%
 fxn_jpg_timestamp_check(index_site, index_year)
 #
 #   [BY HAND] Update has_data in dlog ----
+#   [BY HAND] Add id to ilog ----
 #
+fxn_dlog_ilog_compare(index_site)
 # Preview file naming conventions ----
 #   - Count number of images with and without parentheses
 #   - Returns a table with examples for 0, 1, 2+ parentheses
@@ -172,7 +174,9 @@ fxn_exif_summary_errors(index_site)
 fxn_table_create_blank(index_site)
 #
 #   [BY HAND] Update done_blank in dlog ----
+#   [BY HAND] Update done_blank in ilog ----
 #
+fxn_dlog_ilog_compare(index_site)
 # Check blank image tables ----
 fxn_table_check_blank(index_site) 
 #
@@ -211,8 +215,9 @@ check_errors
 fxn_tidy_for_qc(index_site)
 #
 #   [BY HAND] Update done_tidy in dlog ----
+#   [BY HAND] Update done_tidy in ilog ----
 #
-
+fxn_dlog_ilog_compare(index_site)
 # ========================================================== -----
 # ========================================================== -----
 # PROCESS QC IMAGE TABLES (VAULT) ----
@@ -231,6 +236,8 @@ check_qc <- fxn_table_check_qc(index_site)
 fxn_tidy_for_vault(index_site)
 #
 #   [BY HAND] Update done_vault in dlog ----
+#   [BY HAND] Update done_vault in ilog ----
+fxn_dlog_ilog_compare(index_site)
 #
 # ========================================================== -----
 
