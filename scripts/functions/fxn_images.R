@@ -375,7 +375,7 @@ fxn_jpg_rename_exif_01 <- function(index_site, index_year){
   # Identify the deployments to renumber 
   index_list <- unique(jpg_init$id)
   
-  # index_id = index_list[10]
+  # index_id = index_list[1]
   for(index_id in index_list){
     
     # Create helpers ----

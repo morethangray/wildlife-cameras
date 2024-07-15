@@ -37,16 +37,21 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_vault"]])
 # 
 # Find new files ----
-# Folders  0P, 25M
+# Folders  0P, 0M
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #
 # Image tables 
 fxn_table_find_new(index_site)
 # 
 # Need processing ----
+#   Rename images: 0P; 0M
+check_rename <- fxn_find_files_to_process("rename")
+#
 #   Exif: 0P; 0M
 check_exif <- fxn_find_files_to_process("exif")
-
+check_exif %>%
+  filter(need_process == TRUE)
+#
 #   Blank: 0P; 0M
 check_blank <- fxn_find_files_to_process("blank")
 #
@@ -175,8 +180,8 @@ fxn_table_create_blank(index_site)
 #
 #   [BY HAND] Update done_blank in dlog ----
 #   [BY HAND] Update done_blank in ilog ----
-#
 fxn_dlog_ilog_compare(index_site)
+#
 # Check blank image tables ----
 fxn_table_check_blank(index_site) 
 #
@@ -216,8 +221,8 @@ fxn_tidy_for_qc(index_site)
 #
 #   [BY HAND] Update done_tidy in dlog ----
 #   [BY HAND] Update done_tidy in ilog ----
-#
 fxn_dlog_ilog_compare(index_site)
+#
 # ========================================================== -----
 # ========================================================== -----
 # PROCESS QC IMAGE TABLES (VAULT) ----

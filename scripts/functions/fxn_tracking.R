@@ -269,7 +269,7 @@ fxn_table_find_new <- function(index_site) {
 # _final files that need to be made into _tidy
 # _qc files that need to be made into _clean and archived
 
-# index_type = "rename"
+# index_type = "exif"
 # index_type = "vault"
 fxn_find_files_to_process <- function(index_type){
   
@@ -287,7 +287,7 @@ fxn_find_files_to_process <- function(index_type){
       message(paste0("No images need to be renamed"))
     }
     if(nrow(filtered_dlog) > 0){
-      message(paste0("ACTION NEEDED - Rename image for ", nrow(filtered_dlog),  " deployments in dlog"))
+      message(paste0("ACTION NEEDED - Rename images for ", nrow(filtered_dlog),  " deployments in dlog"))
      
     }
   }
@@ -297,6 +297,7 @@ fxn_find_files_to_process <- function(index_type){
       filtered_dlog <- 
         dlog %>%
         filter(has_data == TRUE, 
+               done_rename == TRUE,
                done_exif %in% c("FALSE", "REDO"))
       
       index_path <- 
