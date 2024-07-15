@@ -269,7 +269,7 @@ fxn_table_find_new <- function(index_site) {
 # _final files that need to be made into _tidy
 # _qc files that need to be made into _clean and archived
 
-# index_type = "files"
+# index_type = "rename"
 # index_type = "vault"
 fxn_find_files_to_process <- function(index_type){
   
@@ -277,202 +277,219 @@ fxn_find_files_to_process <- function(index_type){
   fxn_archive_final_dupes()
   # Identify files that need processing ---- 
   # Filter dlog using done_ columns 
-  # Need exif 
-  if(index_type == "exif"){
+  # Need image rename 
+  if(index_type == "rename"){
     filtered_dlog <- 
       dlog %>%
-      filter(has_data == TRUE, 
-             done_exif %in% c("FALSE", "REDO"))
+      filter(done_rename %in% c("FALSE", "REDO"))
     
-    index_path <- 
-      normalizePath(path_exif, 
-                    winslash = "/", 
-                    mustWork = FALSE)
-    
-    index_message <- paste0("ACTION NEEDED - Create exif image tables for ")
-    
-  }
-  
-  # Need blank 
-  if(index_type == "blank"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_exif == TRUE, 
-             done_blank %in% c("FALSE", "REDO"))
-    
-    index_path <- 
-      normalizePath(path_exif, 
-                    winslash = "/", 
-                    mustWork = FALSE)
-    
-    index_message <- paste0("ACTION NEEDED - Create blank image tables for ")
-    
-  }
-  
-  # Need tidy 
-  if(index_type == "tidy"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_catalog == TRUE, 
-             done_tidy %in% c("FALSE", "REDO"))
-    
-    index_path <- 
-      normalizePath(path_table_catalog, 
-                    winslash = "/", 
-                    mustWork = FALSE)
-    
-    index_message <- paste0("ACTION NEEDED - Create tidy image tables for ")
-  }
-  # Need vault 
-  if(index_type == "vault"){
-    filtered_dlog <- 
-      dlog %>%
-      filter(done_qc == TRUE, 
-             done_vault %in% c("FALSE", "REDO"))
-    
-    index_path <- 
-      normalizePath(path_table_qc, 
-                    winslash = "/", 
-                    mustWork = FALSE)
-    
-    index_message <- paste0("ACTION NEEDED - Move to vault: ")
-  }
-  
-  # List id that need processing ----
-  list_id_need <- unique(filtered_dlog$id)
-  n_files_need <- length(list_id_need)
-  
-  # Identify all files by type ----
-  # List the id that need processing
-  # list_id <- unique(filtered_dlog$id)
-  
-  # Map files in folder
-  all_files <- 
-    tibble(path =
-             dir_ls(path = index_path,
-                    recurse = FALSE,
-                    type = "file")) %>%
-    mutate(file_name = path_file(path),
-           id = str_sub(file_name, 1, 11), 
-           need_process = id %in% list_id_need) %>%
-    filter(str_detect(id, "Thumbs") == FALSE) %>%
-    relocate(id, 
-             need_process) 
-  
-  if(index_type == "vault"){
-    
-    all_files <- 
-      all_files %>%
-      mutate(in_process = str_detect(file_name,
-                                     regex("pro",
-                                           ignore_case = TRUE))) %>%
-      filter(str_detect(path, "final_tidy_qc")) %>%
-      filter(in_process == FALSE)
-             
-  }
-  
-  # Identify missing files and deployments ----
-  # Deployments with files in folder, but missing from dlog
-  missing_dlog <- setdiff(all_files$id, list_id_need)
-  # Deployments in dlog, but missing files in folder
-  missing_files <- setdiff(list_id_need, all_files$id)
-  
-  # Identify deployments with multiple files 
-  list_id_has_multiple <- 
-    all_files %>%
-    group_by(id) %>%
-    count() %>%
-    filter(n>1) %>%
-    pull(id)
-  
-  if(length(list_id_has_multiple) > 0){
-    cat("Multiple files for",  length(list_id_has_multiple), "deployments", "\n")
-    print(list_id_has_multiple)
-    }
-  
-  # Summarize files by status in dlog ----
-  summarize_files <- 
-    all_files %>%
-    mutate(process_type = index_type) %>%
-    group_by(process_type, need_process) %>%
-    count() 
-  
-  # Identify deployments that need processing ----
-  if(nrow(summarize_files) > 0){
-    
-    n_files <- 
-      summarize_files %>%
-      filter(need_process == TRUE) %>%
-      pull(n)
-    
-    
-    # Write messages based on type of processing needed
-    if(length(n_files) > 0){
-      # For deployments with additional file tracking issues
-      if(n_files != n_files_need){
-        
-        # When there are MORE files in data folder than expected from dlog
-        if(length(missing_dlog) > 0){
-          message(paste0("ACTION NEEDED - Update done_", index_type, " for ", length(missing_dlog), " deployments in dlog"))
-          
-          # List the file info
-          print(all_files %>%
-                   filter(id %in% missing_dlog))
-         
-        }
-        
-        # When there are FEWER files in data folder than expected from dlog
-        if(length(missing_files) > 0){
-          message(paste0("ACTION NEEDED - Check Intern Drop Folders for ", length(missing_files)," missing ", index_type, " files"))
-
-          # List the file info
-          print(filtered_dlog %>%
-            filter(id %in% missing_files) %>%
-            select(id, 
-                   done_fix, 
-                   done_rename,
-                   done_exif,
-                   done_blank,
-                   done_catalog, 
-                   done_tidy, 
-                   done_qc,
-                   done_vault, 
-                   starts_with("error")))
-        }
-      }
-      # For all files that need processing
-      message(paste0(index_message,  n_files, " files"))
-    }
-    if(length(n_files) == 0){
-      message(paste0("No action needed for ", index_type))
-    }
-        
-  }else{
     if(nrow(filtered_dlog) == 0){
-      message(paste0("No action needed for ", index_type))
+      message(paste0("No images need to be renamed"))
     }
     if(nrow(filtered_dlog) > 0){
-      message(paste0("ACTION NEEDED - Create ", index_type, " tables for ", length(missing_files), " deployments in dlog"))
+      message(paste0("ACTION NEEDED - Rename image for ", nrow(filtered_dlog),  " deployments in dlog"))
      
-       # List the file info
-      # print(filtered_dlog %>%
-      #         filter(id %in% missing_files) %>%
-      #         select(id, 
-      #                done_fix, 
-      #                done_rename,
-      #                done_exif,
-      #                done_blank,
-      #                done_catalog, 
-      #                done_tidy, 
-      #                done_qc,
-      #                done_vault, 
-      #                starts_with("error")))
-      
     }
   }
+  if(index_type != "rename"){
+    # Need exif 
+    if(index_type == "exif"){
+      filtered_dlog <- 
+        dlog %>%
+        filter(has_data == TRUE, 
+               done_exif %in% c("FALSE", "REDO"))
+      
+      index_path <- 
+        normalizePath(path_exif, 
+                      winslash = "/", 
+                      mustWork = FALSE)
+      
+      index_message <- paste0("ACTION NEEDED - Create exif image tables for ")
+      
+    }
+    
+    # Need blank 
+    if(index_type == "blank"){
+      filtered_dlog <- 
+        dlog %>%
+        filter(done_exif == TRUE, 
+               done_blank %in% c("FALSE", "REDO"))
+      
+      index_path <- 
+        normalizePath(path_exif, 
+                      winslash = "/", 
+                      mustWork = FALSE)
+      
+      index_message <- paste0("ACTION NEEDED - Create blank image tables for ")
+      
+    }
+    
+    # Need tidy 
+    if(index_type == "tidy"){
+      filtered_dlog <- 
+        dlog %>%
+        filter(done_catalog == TRUE, 
+               done_tidy %in% c("FALSE", "REDO"))
+      
+      index_path <- 
+        normalizePath(path_table_catalog, 
+                      winslash = "/", 
+                      mustWork = FALSE)
+      
+      index_message <- paste0("ACTION NEEDED - Create tidy image tables for ")
+    }
+    # Need vault 
+    if(index_type == "vault"){
+      filtered_dlog <- 
+        dlog %>%
+        filter(done_qc == TRUE, 
+               done_vault %in% c("FALSE", "REDO"))
+      
+      index_path <- 
+        normalizePath(path_table_qc, 
+                      winslash = "/", 
+                      mustWork = FALSE)
+      
+      index_message <- paste0("ACTION NEEDED - Move to vault: ")
+    }
+    
+    # List id that need processing ----
+    list_id_need <- unique(filtered_dlog$id)
+    n_files_need <- length(list_id_need)
+    
+    # Identify all files by type ----
+    # List the id that need processing
+    # list_id <- unique(filtered_dlog$id)
+    
+    # Map files in folder
+    all_files <- 
+      tibble(path =
+               dir_ls(path = index_path,
+                      recurse = FALSE,
+                      type = "file")) %>%
+      mutate(file_name = path_file(path),
+             id = str_sub(file_name, 1, 11), 
+             need_process = id %in% list_id_need) %>%
+      filter(str_detect(id, "Thumbs") == FALSE) %>%
+      relocate(id, 
+               need_process) 
+    
+    if(index_type == "vault"){
+      
+      all_files <- 
+        all_files %>%
+        mutate(in_process = str_detect(file_name,
+                                       regex("pro",
+                                             ignore_case = TRUE))) %>%
+        filter(str_detect(path, "final_tidy_qc")) %>%
+        filter(in_process == FALSE)
+      
+    }
+    
+    # Identify missing files and deployments ----
+    # Deployments with files in folder, but missing from dlog
+    missing_dlog <- setdiff(all_files$id, list_id_need)
+    # Deployments in dlog, but missing files in folder
+    missing_files <- setdiff(list_id_need, all_files$id)
+    
+    # Identify deployments with multiple files 
+    list_id_has_multiple <- 
+      all_files %>%
+      group_by(id) %>%
+      count() %>%
+      filter(n>1) %>%
+      pull(id)
+    
+    if(length(list_id_has_multiple) > 0){
+      cat("Multiple files for",  length(list_id_has_multiple), "deployments", "\n")
+      print(list_id_has_multiple)
+    }
+    
+    # Summarize files by status in dlog ----
+    summarize_files <- 
+      all_files %>%
+      mutate(process_type = index_type) %>%
+      group_by(process_type, need_process) %>%
+      count() 
+    
+    # Identify deployments that need processing ----
+    if(nrow(summarize_files) > 0){
+      
+      n_files <- 
+        summarize_files %>%
+        filter(need_process == TRUE) %>%
+        pull(n)
+      
+      
+      # Write messages based on type of processing needed
+      if(length(n_files) > 0){
+        # For deployments with additional file tracking issues
+        if(n_files != n_files_need){
+          
+          # When there are MORE files in data folder than expected from dlog
+          if(length(missing_dlog) > 0){
+            message(paste0("ACTION NEEDED - Update done_", index_type, " for ", length(missing_dlog), " deployments in dlog"))
+            
+            # List the file info
+            print(all_files %>%
+                    filter(id %in% missing_dlog))
+            
+          }
+          
+          # When there are FEWER files in data folder than expected from dlog
+          if(length(missing_files) > 0){
+            message(paste0("ACTION NEEDED - Check Intern Drop Folders for ", length(missing_files)," missing ", index_type, " files"))
+            
+            # List the file info
+            print(filtered_dlog %>%
+                    filter(id %in% missing_files) %>%
+                    select(id, 
+                           done_fix, 
+                           done_rename,
+                           done_exif,
+                           done_blank,
+                           done_catalog, 
+                           done_tidy, 
+                           done_qc,
+                           done_vault, 
+                           starts_with("error")))
+          }
+        }
+        # For all files that need processing
+        message(paste0(index_message,  n_files, " files"))
+      }
+      if(length(n_files) == 0){
+        message(paste0("No action needed for ", index_type))
+      }
+      
+    }else{
+      if(nrow(filtered_dlog) == 0){
+        message(paste0("No action needed for ", index_type))
+      }
+      if(nrow(filtered_dlog) > 0){
+        message(paste0("ACTION NEEDED - Create ", index_type, " tables for ", length(missing_files), " deployments in dlog"))
+        
+        # List the file info
+        # print(filtered_dlog %>%
+        #         filter(id %in% missing_files) %>%
+        #         select(id, 
+        #                done_fix, 
+        #                done_rename,
+        #                done_exif,
+        #                done_blank,
+        #                done_catalog, 
+        #                done_tidy, 
+        #                done_qc,
+        #                done_vault, 
+        #                starts_with("error")))
+        
+      }
+    }
+    
+    return(all_files)
+    
+  }
  
-  return(all_files)
-  
 }
 #
 # # Archive _final files when _final_qc is present ----
