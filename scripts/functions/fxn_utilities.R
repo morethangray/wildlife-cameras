@@ -206,7 +206,7 @@ fxn_define_camera_project <- function(index_site){
   
   # Deployment & intern logs  ----
   # Function to read dlog with column formats
-  fxn_dlog_get <- function(index_path){
+  fxn_dlog_get <<- function(index_path){
     
     # Define is.Date function
     is.Date <- function(x) {

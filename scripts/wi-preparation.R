@@ -22,11 +22,81 @@ source(here("scripts/functions/fxn_image-tables.R"))
 # Define site  ----
 # PWD: Pepperwood WPI grid
 # MMP: Modini WPI grid
-# FOR: Pepperwood forest plots
-# DEN: DENDRA D-RAI cameras
 #
 index_site = "PWD"
 index_year = "2024"
+fxn_define_camera_project(index_site)
+# project_id = "Pepperwood"
+# ========================================================== -----
+# CREATE HELPERS FOR WI MIGRATION ----
+path_out_wi_migration <- here("output/wi-migration")
+# ---------------------------------------------------------- -----
+# DEFINE LEGACY ATTRIBUTES ----
+# Create dlog for legacy data ----
+dlog_legacy <-
+  fxn_dlog_get(here("K:/WPI Project/legacy-data_PWD", 
+                    "wpi_deployments_all_2013-2016.xlsx")) %>%
+  filter(grid == "P", 
+         use_data == TRUE) %>%
+  tidyr::drop_na(id) %>%
+  arrange(id)
+#
+# Collate summary tables from wi sheets ----
+# From WI format image tables 
+# Define path to survey attributes from WI tables
+path_survey_attributes <- here(path_site, "data/z_archive/survey-attributes_wi")
+
+# Get the list of all CSV files in the directory
+csv_files <- list.files(path = path_survey_attributes, pattern = "\\.csv$", full.names = TRUE)
+
+#   legacy_attributes ----
+# Read and bind all CSV files into one data tibble
+legacy_attributes <-
+  csv_files %>%
+  map_dfr(~ read_csv(.))  %>%
+  # Filter because have files from catalog and qc 
+  distinct()
+# ========================================================== -----
+# CAMERA METADATA ----
+# Get camera info from legacy_attributes ----
+# Use legacy_attributes, captain's log as input
+legacy_attributes_camera <- 
+  legacy_attributes %>%
+  filter(sheet == "Cameras", 
+         attribute != "project_id") %>%
+  spread(attribute, value) %>%
+  select(id, 
+         make, 
+         model, 
+         serial_number, 
+         year_purchased)
+
+legacy_attributes_camera_distinct <- 
+  legacy_attributes_camera  %>%
+  select(-id) %>%
+  distinct() %>%
+  arrange(serial_number) 
+#   Write csv ----
+legacy_attributes_camera %>%
+  write_csv(here(path_out_wi_migration, 
+                 "legacy-attributes_camera.csv"))
+
+legacy_attributes_camera_distinct %>%
+  write_csv(here(path_out_wi_migration, 
+                 "legacy-attributes_camera_distinct.csv"))
+
+#
+# Get camera info from captain's log ----
+# 
+# Create Camera metadata ----
+#
+# project_id	:	confirm
+# camera_id	:	define from serial number
+# make	:	get from captain's log, deployment summary
+# model	:	get from captain's log, deployment summary
+# serial_number	:	get from captain's log, deployment summary
+# year_purchased	:	confirm
+#
 # ========================================================== -----
 # IMAGE TABLES ----
 # Simplify comments column for image tables in vault ----
@@ -40,6 +110,23 @@ index_year = "2024"
 # Create Image metadata ----
 # Convert from image table
 # Use our image tables (_clean in vault) as input
+# Fields from _clean table 
+list_columns_from_clean <- c("id",
+                             "image_id",
+                             "qc_by",
+                             "catalog_by",
+                             "binomial_1",
+                             "binomial_2",
+                             "binomial_3",
+                             "count_1",
+                             "count_2",
+                             "count_3",
+                             "qc_certainty",
+                             "date_time",
+                             "good",
+                             "comments")
+
+
 #
 # project_id	:	confirm
 # deployment_id	:	Create from id
@@ -72,7 +159,10 @@ index_year = "2024"
 # camera coordinates, quiet period, height, angle
 #
 # Create Deployment metadata ----
-#
+legacy_attributes_deployment <- 
+  legacy_attributes %>%
+  filter(sheet == "Deployment")
+# 
 # project_id	:	confirm
 # deployment_id	:	Create from id
 # subproject_name	:	None
@@ -100,19 +190,6 @@ index_year = "2024"
 # plot_treatment	:	None
 # plot_treatment_description	:	None
 # detection_distance	:	NULL
-#
-# ========================================================== -----
-# CAMERA METADATA ----
-# Collate deployment summary tables ----
-# Create Camera metadata ----
-# Use deployment summary, captain's log as input
-#
-# project_id	:	confirm
-# camera_id	:	define from serial number
-# make	:	get from captain's log, deployment summary
-# model	:	get from captain's log, deployment summary
-# serial_number	:	get from captain's log, deployment summary
-# year_purchased	:	confirm
 #
 # ========================================================== -----
 # PROJECT METADATA ----
