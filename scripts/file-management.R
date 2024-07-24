@@ -25,7 +25,7 @@ source(here("scripts/functions/fxn_image-tables.R"))
 # FOR: Pepperwood forest plots
 # DEN: DENDRA D-RAI cameras
 #
-index_site = "MMP"
+index_site = "PWD"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----

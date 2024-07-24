@@ -530,112 +530,119 @@ fxn_archive_final_dupes <- function(){
 #   
 }
 # # Unarchive done_ files ----
-# #   fxn_unarchive_done_files ----
-# fxn_unarchive_done_files <- function(index_type){
-#   
-#   # Identify files that are done ---- 
-#   
-#   if(index_type == "exif"){
-#     filtered_dlog <- 
-#       dlog %>%
-#       filter(done_exif == TRUE)
-#   }
-#   
-#   if(index_type == "blank"){
-#     filtered_dlog <- 
-#       dlog %>%
-#       filter(done_blank == TRUE)
-#   }
-#   
-#   if(index_type == "catalog"){
-#     filtered_dlog <- 
-#       dlog %>%
-#       filter(done_catalog == TRUE)
-#   }
-#   
-#   if(index_type == "tidy"){
-#     filtered_dlog <- 
-#       dlog %>%
-#       filter(done_tidy == TRUE)
-#   }
-#   
-#   if(index_type == "qc"){
-#     filtered_dlog <- 
-#       dlog %>%
-#       filter(done_qc == TRUE)
-#   }
-#   
-#   
-#   # List id that are done
-#   list_id_done <- unique(filtered_dlog$id)
-#   
-#   # Create paths for main and archive folders ----
-#   list_types <- c("exif",
-#                   "blank",
-#                   "catalog",
-#                   "tidy",
-#                   "qc")
-#   
-#   lookup_paths <- 
-#     tibble(index_type = list_types, 
-#            index_path_init = paste0("path_table_", index_type),
-#            index_path_rev = str_replace(index_path_init, 
-#                                         "path_table_exif", 
-#                                         "path_exif"),
-#            index_path_archive = paste0(index_path_rev, "_archive"), 
-#            index_path = str_replace(index_path_rev,
-#                                     "path_table_tidy", 
-#                                     "path_table_qc")) %>%
-#     select(-index_path_init, 
-#            -index_path_rev)
-#   
-#   filtered_paths <-  
-#     lookup_paths %>%
-#     filter(index_type == {{index_type}})
-#   
-#   index_path <- 
-#     normalizePath(get(filtered_paths$index_path), 
-#                   winslash = "/", 
-#                   mustWork = FALSE)
-#   index_path_archive <- 
-#     normalizePath(get(filtered_paths$index_path_archive), 
-#                   winslash = "/", 
-#                   mustWork = FALSE)
-#   
-#   # Identify all files by type ----
-#   all_files <- 
-#     tibble(path =
-#              dir_ls(path = index_path,
-#                     recurse = TRUE,
-#                     type = "file")) %>%
-#     mutate(file_name = path_file(path),
-#            id = str_sub(file_name, 1, 11),
-#            path_dir = path_dir(path)) %>%
-#     filter(str_detect(id, "Thumbs") == FALSE) %>%
-#     relocate(id,
-#              path_dir) 
-#   
-#   # Identify archived files that need processing ----
-#   # Identify files in archive that are NOT in list_id_done
-#   paths_to_move <- 
-#     all_files %>%
-#     filter(path_dir == index_path_archive) %>%
-#     filter(id %nin% list_id_done) %>%
-#     mutate(path_new = here(index_path, file_name))  %>%
-#     relocate(id,
-#              path_dir, 
-#              path_new) 
-#   
-#   if(nrow(paths_to_move) > 0){
-#     
-#     
-#   }
-#   # Move files out of archive into main folder ----
-#   # Unarchive files
-#   
-#   file_move(path = paths_to_move$path, 
-#             new_path = paths_to_move$path_new)
-#   
-# }
-# 
+#   fxn_unarchive_done_files ----
+# index_type = "catalog"
+# fxn_define_camera_project(index_site)
+fxn_unarchive_done_files <- function(index_type){
+
+  # Identify files to unarchive ----
+
+  if(index_type == "exif"){
+    filtered_dlog <-
+      dlog %>%
+      filter(done_exif == TRUE, 
+             done_blank == FALSE)
+  }
+
+  # if(index_type == "blank"){
+  #   filtered_dlog <-
+  #     dlog %>%
+  #     filter(done_blank == TRUE)
+  # }
+  # 
+  if(index_type == "catalog"){
+    filtered_dlog <-
+      dlog %>%
+      filter(done_catalog == TRUE, 
+             done_tidy == FALSE, 
+             done_qc == FALSE)
+  }
+  # 
+  # if(index_type == "tidy"){
+  #   filtered_dlog <-
+  #     dlog %>%
+  #     filter(done_tidy == TRUE)
+  # }
+  # 
+  # if(index_type == "qc"){
+  #   filtered_dlog <-
+  #     dlog %>%
+  #     filter(done_qc == TRUE)
+  # }
+
+
+  # List id to unarchive
+  list_id_need <- unique(filtered_dlog$id)
+
+  # Create paths for main and archive folders ----
+  list_types <- c("exif",
+                  "blank",
+                  "catalog",
+                  "tidy",
+                  "qc")
+
+  lookup_paths <-
+    tibble(index_type = list_types,
+           index_path_init = paste0("path_table_", index_type),
+           index_path_rev = str_replace(index_path_init,
+                                        "path_table_exif",
+                                        "path_exif"),
+           index_path_archive = paste0(index_path_rev, "_archive"),
+           index_path = str_replace(index_path_rev,
+                                    "path_table_tidy",
+                                    "path_table_qc")) %>%
+    select(-index_path_init,
+           -index_path_rev)
+
+  filtered_paths <-
+    lookup_paths %>%
+    filter(index_type == {{index_type}})
+
+  index_path <-
+    normalizePath(get(filtered_paths$index_path),
+                  winslash = "/",
+                  mustWork = FALSE)
+  index_path_archive <-
+    normalizePath(get(filtered_paths$index_path_archive),
+                  winslash = "/",
+                  mustWork = FALSE)
+
+  # Identify all files by type ----
+  all_files <-
+    tibble(path =
+             dir_ls(path = index_path,
+                    recurse = TRUE,
+                    type = "file")) %>%
+    mutate(file_name = path_file(path),
+           id = str_sub(file_name, 1, 11),
+           path_dir = path_dir(path)) %>%
+    filter(str_detect(id, "Thumbs") == FALSE) %>%
+    relocate(id,
+             path_dir)
+
+  # Identify archived files that need processing ----
+  # Identify files in archive that are in list_id_need
+  paths_to_move <-
+    all_files %>%
+    filter(path_dir == index_path_archive) %>%
+    filter(id %in% list_id_need) %>%
+    mutate(path_new = here(index_path, file_name))  %>%
+    relocate(id,
+             path_dir,
+             path_new)
+  
+  # Move files out of archive into main folder ----
+
+  if(nrow(paths_to_move) > 0){
+    
+    # Unarchive files
+    
+    file_move(path = paths_to_move$path,
+              new_path = paths_to_move$path_new)
+
+  }
+  
+
+}
+
 # ========================================================== -----

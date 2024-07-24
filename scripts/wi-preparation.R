@@ -173,11 +173,243 @@ dlog_pwd %>%
 #
 # ========================================================== -----
 # IMAGE TABLES ----
+# Create dlog_wi -----
+dlog_wi <- 
+  dlog %>%
+  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
+# read_xlsx_images_sheet ----
+# Function to read the image sheet of each xlsx file 
+read_xlsx_images_sheet <- function(file) {
+  read_xlsx(file, 
+            sheet = "Images",
+            col_types = "text") %>%
+    mutate(image_id = as.character(image_id),
+           photo_type = as.character(photo_type),
+           binomial_1 = as.character(binomial_1),
+           count_1 = as.numeric(count_1),
+           comments = as.character(comments),
+           catalog_by = as.character(catalog_by),
+           review = as.character(review),
+           good = as.character(good),
+           error = as.character(error),
+           qc_by = as.character(qc_by),
+           qc_certainty = as.character(qc_certainty),
+           binomial_2 = as.character(binomial_2),
+           count_2 = as.numeric(count_2),
+           binomial_3 = as.character(binomial_3),
+           count_3 = as.numeric(count_3),
+           id = as.character(id),
+           image_n = as.numeric(image_n),
+           image_file = as.character(image_file))
+              
+}
+# Collate all done_catalog image tables ----
+# To confirm values in binomial_2
+catalog_files <- 
+  tibble(path = list.files(path = path_table_catalog_archive, 
+                           pattern = "\\.xlsx$",
+                           full.names = TRUE)) %>%
+  mutate(file_index = tools::file_path_sans_ext(basename(path)), 
+         id = str_sub(file_index, 1, 11)) %>%
+  filter(id %in% unique(dlog_wi$id))
+
+# Read and bind all files into one data tibble 
+all_catalog <- unique(catalog_files$path) %>%
+  map_dfr(read_xlsx_images_sheet)
+
+#   Confirm no duplicate image files  -----
+check_dupes_catalog <-
+  all_catalog %>%
+  get_dupes(image_id)
+
+unique(check_dupes_catalog$id)
+
+# Collate all image tables from vault -----
+# Get the list of all files in the vault
+vault_files <- 
+  tibble(path = list.files(path = path_vault, 
+                           pattern = "\\.xlsx$",
+                           full.names = TRUE)) %>%
+  mutate(file_index = tools::file_path_sans_ext(basename(path)), 
+         id = str_sub(file_index, 1, 11)) %>%
+  filter(id %in% unique(dlog_wi$id))
+
+# Read and bind all files into one data tibble 
+all_vault <- unique(vault_files$path) %>%
+  map_dfr(read_xlsx_images_sheet)
+
+# 999,683 x 21
+
+# #   Confirm no duplicate image files  -----
+# check_dupes_vault <-
+#   all_vault %>%
+#   get_dupes(image_id)
+# 
+# unique(check_dupes_vault$id)
+#   Check timestamps ----
+# all_vault %>%
+#   select(id, 
+#          image_id, 
+#          photo_type, 
+#          starts_with("binomial"), 
+#          starts_with("count"), 
+#          comments, 
+#          catalog_by, 
+#          qc_by, 
+#          qc_certainty, 
+#          review, 
+#          good, 
+#          error, 
+#          date_time,
+#          image_n, 
+#          image_file)
+  
+# ---------------------------------------------------------- -----
+# Collate binomial columns ----
+binomial_long <- 
+  all_vault %>%
+  select(image_id, 
+         photo_type,
+         starts_with("binomial")) %>%
+  gather(column_n, binomial, binomial_1:binomial_3) %>%
+  drop_na(binomial) %>%
+  mutate(column_n = str_remove_all(column_n, "binomial_")) %>%
+  unite(image_id_n, 
+        c(image_id, column_n), 
+        sep = "_",
+        remove = FALSE)
+
+#   Confirm all binomial_2 are present -----
+has_binomial_2 <- 
+  all_vault %>% 
+  drop_na(binomial_2) %>%
+  select(image_id)
+
+binomial_long %>%
+  filter(column_n  == 2) %>%
+  distinct(image_id)
+
+#   Confirm all binomial_3 are present -----
+has_binomial_3 <- 
+  all_vault %>% 
+  drop_na(binomial_3) %>%
+  select(image_id)
+
+binomial_long %>%
+  filter(column_n  == 3) %>%
+  distinct(image_id)
+
+#   Count rows ---- 
+nrow(all_vault) + nrow(has_binomial_2) + nrow(has_binomial_3)
+# ---------------------------------------------------------- -----
+# Collate count columns ----
+count_long <- 
+  all_vault %>%
+  select(image_id,  
+         starts_with("count")) %>%
+  gather(column_n, count, count_1:count_3)  %>%
+  mutate(column_n = str_remove_all(column_n, "count_")) %>%
+  unite(image_id_n, 
+        c(image_id, column_n), 
+        sep = "_",
+        remove = TRUE)
+
+# START WORKING HERE -----
+# #   Check count values  ----
+count_long %>%
+  distinct(count) %>%
+  arrange(count) %>%
+  pull()
+
+large_counts <- 
+  count_long %>%
+  filter(count > 40) %>%
+  mutate(image_id = str_sub(image_id_n, 1, 17)) %>%
+  pull(image_id)
+
+binomial_long %>%
+  filter(image_id %in% large_counts)
+
+all_vault %>%
+  filter(image_id %in% large_counts)
+
+all_vault  %>%
+  filter(count_2 > 0) %>%
+  filter(is.na(binomial_2)) %>%
+  distinct(id)
+
+all_catalog %>%
+  filter(image_id %in% large_counts) %>%
+  filter(id %in% "P_D4_200722")
+
+all_catalog  %>%
+  filter(count_2 > 0) %>%
+  filter(is.na(binomial_2)) %>%
+  distinct(id)
+
+# 
+# all_vault %>%
+#   distinct(count_1) %>%
+#   pull()
+# all_vault %>%
+#   distinct(count_2) %>%
+#   pull()
+# all_vault %>%
+#   distinct(count_3) %>%
+#   pull()
+
+#   Combine binomial_long and count_long ----
+binomial_count_long <- 
+  binomial_long %>%
+  left_join(count_long, "image_id_n") %>%
+  select(image_id, 
+         photo_type, 
+         binomial, 
+         count, 
+         column_n)
+
+#   Check for rows without count ----
+binomial_count_long %>%
+  filter(is.na(count)) %>%
+  View()
+
+#   Confirm all image_id are present ----
+all_vault %>% 
+  distinct(image_id)  %>%
+  left_join(binomial_count_long, "image_id") %>%
+  filter(is.na(photo_type))
+
+#   Confirm values by species -----
+binomial_count_long %>%
+  filter(image_id == "P_D4_200722_01291")
+  distinct(count) %>%
+  arrange(count) %>%
+  pull(count)
+  distinct(binomial, count) %>%
+  arrange(binomial, count)
+
+# ---------------------------------------------------------- -----
 # Simplify comments column for image tables in vault ----
-# Check column format (count_1, count_2, count_3) ----
-#   Identify value = character
-#   Check count field for comment
-#   Revise table if needed
+distinct_comments <- 
+  all_xlsx %>%
+  drop_na(comments) %>%
+  distinct(comments)
+
+# ---------------------------------------------------------- -----
+# Create taxonomic data ----
+# Distinct species 
+
+# Crosswalk with wi_taxon_id 
+# ---------------------------------------------------------- -----
+# Create highlighted ----
+# convert good = TRUE to 1, good = FALSE to 0
+# Create identified_by ----
+# create using qc_by, append catalog_by in NA
+all_xlsx %>%
+  distinct(catalog_by, qc_by)
+# Replace Needs ID with unidentifiable ----
+# ---------------------------------------------------------- -----
+# ---------------------------------------------------------- -----
 # Create _clean image tables for legacy data ----
 #
 # ---------------------------------------------------------- -----

@@ -205,7 +205,8 @@ fxn_table_collate_catalog <- function(index_site){
   list_id <- 
     dlog %>%
     filter(done_catalog == TRUE, 
-           done_tidy == FALSE) %>%
+           done_tidy == FALSE, 
+           done_qc == FALSE) %>%
     arrange(id)  %>%
     pull(id)
   
