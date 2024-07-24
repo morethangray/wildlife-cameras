@@ -10,176 +10,19 @@ source(here("scripts/functions/fxn_folders.R"))
 source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
-# README -----
-# Output files are saved to path_out
-#   K:\wildlife-cameras\output\<SITE>
-# When an output file is created:
-#   Existing file renamed with _date, moved to z_archive
-#   New file is saved in main folder
-# A new _error file created ONLY when errors are found
-#   If there aren't errors, no new file is made
 # ---------------------------------------------------------- -----
 # Define site  ----
-# PWD: Pepperwood WPI grid
-# MMP: Modini WPI grid
-#
 index_site = "PWD"
 index_year = "2024"
 fxn_define_camera_project(index_site)
-# project_id = "Pepperwood"
-# ========================================================== -----
-# CREATE HELPERS FOR WI MIGRATION ----
 path_out_wi_migration <- here("output/wi-migration")
-# ---------------------------------------------------------- -----
-# DEFINE LEGACY ATTRIBUTES ----
-# Create dlog for legacy data ----
-dlog_legacy <-
-  fxn_dlog_get(here("K:/WPI Project/legacy-data_PWD", 
-                    "wpi_deployments_all_2013-2016.xlsx")) %>%
-  filter(grid == "P", 
-         use_data == TRUE) %>%
-  tidyr::drop_na(id) %>%
-  arrange(id)
-
-# Bind dlog and dlog_legacy ----
-dlog_pwd <- 
-  dlog %>%
-  filter(migrate_wi == TRUE) %>%
-  bind_rows(dlog_legacy) %>%
-  select(id, 
-         camera,
-         date_from, 
-         date_to, 
-         error_type, 
-         error_subtype, 
-         # comments,
-         serial_number)
-#
-# Collate summary tables from wi sheets ----
-# From WI format image tables 
-# Define path to survey attributes from WI tables
-path_survey_attributes <- here(path_site, "data/z_archive/survey-attributes_wi")
-
-# Get the list of all CSV files in the directory
-csv_files <- list.files(path = path_survey_attributes, pattern = "\\.csv$", full.names = TRUE)
-
-#   legacy_attributes ----
-# Read and bind all CSV files into one data tibble
-legacy_attributes <-
-  csv_files %>%
-  map_dfr(~ read_csv(.))  %>%
-  # Filter because have files from catalog and qc 
-  distinct()
-# Get camera info from legacy_attributes ----
-# Use legacy_attributes, captain's log as input
-legacy_attributes_camera <- 
-  legacy_attributes %>%
-  filter(sheet == "Cameras", 
-         attribute != "project_id") %>%
-  spread(attribute, value) %>%
-  select(id, 
-         make, 
-         model, 
-         serial_number, 
-         year_purchased)
-
-legacy_attributes_camera_distinct <- 
-  legacy_attributes_camera  %>%
-  select(-id) %>%
-  distinct() %>%
-  arrange(serial_number) 
-# #   Write csv ----
-# legacy_attributes_camera %>%
-#   write_csv(here(path_out_wi_migration, 
-#                  "legacy-attributes_camera.csv"))
-# 
-# legacy_attributes_camera_distinct %>%
-#   write_csv(here(path_out_wi_migration, 
-#                  "legacy-attributes_camera_distinct.csv"))
-# Get deployment info from legacy_attributes ----
-legacy_attributes_deployment <- 
-  legacy_attributes %>%
-  filter(sheet == "Deployment")  %>%
-  spread(attribute, value) %>%
-  mutate(camera = str_sub(id, 1, 4)) %>%
-  select(id, 
-         camera,
-         serial_number = camera_id, 
-         date_from = camera_deployment_begin_date, 
-         date_to = camera_deployment_end_date, 
-         latitude = latitude_resolution, 
-         longitude = longitude_resolution,
-         fail_details = camera_failure_details,
-         fail_hardware = camera_hardware_failure, 
-         deployment_id, 
-         event_name) 
-
-# #   Write csv ----
-# Camera coordinates 
-# legacy_attributes_deployment %>%
-#   distinct(camera, 
-#            latitude, 
-#            longitude)  %>%
-#   write_csv(here(path_out_wi_migration, 
-#                  "camera_coordinates.csv"))
-
-
-legacy_attributes_deployment %>%
-  select(-latitude, 
-         -longitude) %>%
-    write_csv(here(path_out_wi_migration,
-                   "camera_deployments.csv"))
-  
-# ========================================================== -----
-# CAMERA METADATA ----
-# Get camera info from captain's log ----
-camera_sn_dates <- read_xlsx(here(path_out_wi_migration, 
-                                    "camera_metadata.xlsx"), 
-                               sheet = "camera-dates") %>%
-  mutate(date_from = as_date(date_from), 
-         date_to = as_date(date_to)) %>%
-  filter(grid == "P") %>%
-  select(camera, date_from, date_to, serial_number)
-
-new_sn <- 
-  dlog_pwd %>%
-  select(id, camera, date_from)  %>%
-  left_join(camera_sn_dates, by = "camera") %>%
-  filter(date_from.x >= date_from.y & date_from.x <= date_to) %>%
-  select(id, 
-         serial_number) %>%
-  distinct()
-
-# new_sn %>%
-#   write_csv(here(path_out_wi_migration,
-#                  "camera_serial-number_revised_2.csv"))
-
-dlog_pwd %>%
-  select(id, camera, 
-         serial_number_init = serial_number) %>%
-  left_join(new_sn, "id") %>%
-  distinct() %>%
-  filter(serial_number_init != serial_number)
-  
-
-# Create Camera metadata ----
-#
-# project_id	:	confirm
-# camera_id	:	define from serial number
-# make	:	get from captain's log, deployment summary
-# model	:	get from captain's log, deployment summary
-# serial_number	:	get from captain's log, deployment summary
-# year_purchased	:	confirm
-#
-# ========================================================== -----
-# IMAGE TABLES ----
-# Create dlog_wi -----
-dlog_wi <- 
-  dlog %>%
-  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
-# read_xlsx_images_sheet ----
+# project_id = "Pepperwood"
+# Define functions ----
+#   read_xlsx_images_sheet ----
 # Function to read the image sheet of each xlsx file 
 read_xlsx_images_sheet <- function(file) {
+  
+  data <- 
   read_xlsx(file, 
             sheet = "Images",
             col_types = "text") %>%
@@ -201,8 +44,57 @@ read_xlsx_images_sheet <- function(file) {
            id = as.character(id),
            image_n = as.numeric(image_n),
            image_file = as.character(image_file))
-              
+  
+  # For the 'date_time' column
+  if (grepl("^\\d+\\.\\d+$", data$date_time[1])) {
+    data$date_time <- 
+      as.POSIXct(as.numeric(data$date_time) * 86400,
+                 origin = "1899-12-30")
+  } else {
+    data$date_time <- as.POSIXct(data$date_time)
+  }
+  
+  data$date <- as_date(data$date_time)
+  # # For the 'date' column
+  # if (is_all_numeric(data$date)) {
+  #   data$date <- as.Date(as.numeric(data$date),
+  #                        origin = "1899-12-30")
+  # } else {
+  #   data$date <- as.Date(data$date)
+  # }
+  
+  data$time <- as_hms(strptime(data$time, 
+                               format = "%H:%M:%S"), 
+                      on_fail = NA)
+  
+  if (exists("data")) {
+    cat(file, "\n")
+  } else {
+    message(paste0("Error with file ", file))
+  }
+  return(data)
 }
+
+#   remove_duplicates ----
+# Define a function to remove duplicate strings
+# comment = distinct_comments$comments
+remove_duplicates <- function(comment) {
+  # Split the comment into individual strings
+  strings <- str_split(comment, ";\\s*")[[826]]
+  
+  # Remove duplicate strings while preserving the order
+  unique_strings <- unique(strings)
+  
+  # Join the unique strings back together with "; " separator
+  cleaned_comment <- paste(unique_strings, collapse = "; ")
+  
+  return(cleaned_comment)
+}
+# ========================================================== -----
+# Create dlog_wi -----
+dlog_wi <- 
+  dlog %>%
+  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
 # Collate all done_catalog image tables ----
 # To confirm values in binomial_2
 catalog_files <- 
@@ -235,9 +127,18 @@ vault_files <-
   filter(id %in% unique(dlog_wi$id))
 
 # Read and bind all files into one data tibble 
-all_vault <- unique(vault_files$path) %>%
+all_vault_init <- unique(vault_files$path) %>%
   map_dfr(read_xlsx_images_sheet)
 
+# Tidy values ----
+all_vault <- 
+  all_vault_init %>%
+  rename(orig_certainty = qc_certainty) %>%
+  left_join(lookup_certainty, "orig_certainty") %>%
+  mutate(catalog_by = ifelse(catalog_by == "Vf", "Viviane Fuller", catalog_by), 
+         qc_by = ifelse(qc_by == "Vf", "Viviane Fuller", qc_by)) %>%
+  select(-orig_certainty)
+names(all_vault)
 # 999,683 x 21
 
 # #   Confirm no duplicate image files  -----
@@ -263,7 +164,7 @@ all_vault <- unique(vault_files$path) %>%
 #          date_time,
 #          image_n, 
 #          image_file)
-  
+
 # ---------------------------------------------------------- -----
 # Collate binomial columns ----
 binomial_long <- 
@@ -382,18 +283,54 @@ all_vault %>%
 #   Confirm values by species -----
 binomial_count_long %>%
   filter(image_id == "P_D4_200722_01291")
-  distinct(count) %>%
+distinct(count) %>%
   arrange(count) %>%
   pull(count)
-  distinct(binomial, count) %>%
+distinct(binomial, count) %>%
   arrange(binomial, count)
 
 # ---------------------------------------------------------- -----
 # Simplify comments column for image tables in vault ----
-distinct_comments <- 
-  all_xlsx %>%
+# Confirm needs review have done_qc ----
+error_messages <- 
+  lookup_photo_type_binomial %>%
+  drop_na(error_message) %>%
+  distinct(error_message) %>%
+  arrange(error_message) 
+
+list_error_messages_qc <- 
+  error_messages %>%
+  filter(str_detect(error_message, "CONFIRM|FIX|NEEDS")) %>%
+  pull()
+
+# Combine multiple patterns into a single regular expression
+patterns_error_qc <- str_c(list_error_messages_qc, collapse = "|")
+
+comments_error_qc <- 
+  all_vault %>%
   drop_na(comments) %>%
-  distinct(comments)
+  select(comments, 
+         review, 
+         starts_with("qc")) %>%
+  distinct() %>%
+  filter(str_detect(comments, patterns_error_qc)) 
+
+comments_error_qc %>%
+  distinct(review)
+comments_error_qc %>%
+  distinct(qc_by)
+comments_error_qc %>%
+  distinct(qc_certainty)
+
+# Distinct comments ----
+
+
+distinct_comments <- 
+  all_vault %>%
+  drop_na(comments) %>%
+  distinct(comments) %>%
+  mutate(length = nchar(comments), 
+         n_sc = str_count(comments, ";")) 
 
 # ---------------------------------------------------------- -----
 # Create taxonomic data ----
@@ -458,70 +395,5 @@ list_columns_from_clean <- c("id",
 # markings	:	None
 # external_sequence_id	:	NULL
 # sequence_start_time	:	NULL
-#
-# ========================================================== -----
-# DEPLOYMENT METADATA ----
-# Confirm camera attributes for all years (2012-2023) ----
-# camera coordinates, quiet period, height, angle
-#
-# Create Deployment metadata ----
-
-# 
-# project_id	:	confirm
-# deployment_id	:	Create from id
-# subproject_name	:	None
-# subproject_design	:	None
-# placename	:	Create from camera
-# longitude	:	get from spatial data and confirm with SH
-# latitude	:	get from spatial data and confirm with SH
-# start_date	:	Create from date_from
-# end_date	:	Create from date_to
-# event_name	:	None
-# event_description	:	None
-# event_type	:	None
-# bait_type	:	None
-# bait_description	:	None
-# feature_type	:	None
-# feature_type_methodology	:	None
-# camera_id	:	define from serial number
-# quiet_period	:	get from SH for each deployment
-# camera_functioning	:	Crosswalk to our error types, also secondary error type
-# sensor_height	:	get from SH for each deployment
-# height_other	:	None
-# sensor_orientation	:	get from SH for each deployment
-# orientation_other	:	None
-# recorded_by	:	get from SH for each deployment
-# plot_treatment	:	None
-# plot_treatment_description	:	None
-# detection_distance	:	NULL
-#
-# ========================================================== -----
-# PROJECT METADATA ----
-# Create Project metadata ----
-#
-# project_id	:	confirm
-# project_name	:	confirm
-# project_id	:	confirm
-# project_short_name	:	confirm
-# project_objectives	:	confirm
-# project_species	:	Multiple
-# project_species_individual	:	None
-# project_sensor_layout	:	Systematic
-# project_sensor_layout_targeted_type	:	None
-# project_bait_use	:	No
-# project_bait_type	:	None
-# project_stratification	:	Yes
-# project_stratification_type	:	Distance
-# project_sensor_method	:	Sensor Detection
-# project_individual_animals	:	No
-# project_blank_images	:	No
-# project_sensor_cluster	:	No
-# project_admin	:	confirm
-# project_admin_email	:	confirm
-# country_code	:	USA
-# embargo	:	48
-# metadata_license	:	confirm
-# image_license	:	confirm
-# project_type	:	Image
 #
 # ========================================================== -----
