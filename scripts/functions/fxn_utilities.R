@@ -67,20 +67,40 @@ lookup_qc_initials <-
 
 lookup_certainty <- 
   tibble(orig_certainty = c("Absolutely sure",
+                            "absolutely sure",
+                            "Absolutely Sure",
+                            "Absolutely", 
+                            "Abosuletly sure",
+                            "Absolute sure",
+                            "Abolutely sure", 
+                            "Abosulety sure", 
+                            "Absoluetly sure", 
+                            
                             "Pretty sure",
                             "Pretty Sure",
-                            "absolutely sure",
                             "Prettys sure",
-                            "Absolutely Sure",
-                            "Absolutely"), 
+                            
+                            "Not so sure", 
+                            "Not sure"
+                            ), 
          
          qc_certainty = c("Absolutely sure",
-                          "Pretty sure",
-                          "Pretty sure",
                           "Absolutely sure",
-                          "Pretty sure",
                           "Absolutely sure",
-                          "Absolutely sure"))
+                          "Absolutely sure", 
+                          "Absolutely sure",
+                          "Absolutely sure",
+                          "Absolutely sure",
+                          "Absolutely sure", 
+                          "Absolutely sure", 
+                          
+                          "Pretty sure",
+                          "Pretty sure",
+                          "Pretty sure",
+                          
+                          "Not sure", 
+                          "Not sure"
+                          ))
 
 lookup_comments <- 
   read_xlsx(here(path_in, 
