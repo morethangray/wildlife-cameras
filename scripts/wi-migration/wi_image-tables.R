@@ -11,11 +11,18 @@ source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # ---------------------------------------------------------- -----
-# Define site  ----
+# Define site and attributes ----
 index_site = "PWD"
-index_year = "2024"
+
 fxn_define_camera_project(index_site)
+
 path_out_wi_migration <- here("output/wi-migration")
+
+dlog_wi <- 
+  dlog %>%
+  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
+
+
 # project_id = "Pepperwood"
 # Define functions ----
 #   read_xlsx_images_sheet ----
@@ -75,26 +82,115 @@ read_xlsx_images_sheet <- function(file) {
   return(data)
 }
 
-#   remove_duplicates ----
+#   fxn_remove_duplicates ----
 # Define a function to remove duplicate strings
 # comment = distinct_comments$comments
-remove_duplicates <- function(comment) {
-  # Split the comment into individual strings
-  strings <- str_split(comment, ";\\s*")[[826]]
+fxn_remove_duplicates <- function(index_data) {
   
-  # Remove duplicate strings while preserving the order
-  unique_strings <- unique(strings)
+  # Define a helper function to clean individual comments
+  clean_dupes <- function(comment) {
+    
+    # Split the comment into individual strings
+    strings <- str_split(comment, ";\\s*")[[1]]
+    
+    # Remove duplicate strings while preserving the order
+    unique_strings <- unique(strings)
+    
+    # Join the unique strings back together with "; " separator
+    cleaned_comment <- paste(unique_strings, collapse = "; ")
+    
+    return(cleaned_comment)
+  }
   
-  # Join the unique strings back together with "; " separator
-  cleaned_comment <- paste(unique_strings, collapse = "; ")
+  # Apply the cleaning function to each comment
+  index_data <- index_data %>%
+    mutate(comments_clean = sapply(comments, clean_dupes)) %>%
+    rename(comments_init = comments, 
+           comments = comments_clean) %>%
+    relocate(comments)
   
-  return(cleaned_comment)
+  return(index_data)
+
 }
+#   fxn_remove_error_message ----
+# index_list = list_error_messages_qc
+# index_data = subset_comments
+fxn_remove_error_message <- function(index_data, index_list){
+  
+  # Define a helper function to clean individual comments
+  clean_comment <- function(comment, list_error_messages_qc) {
+    
+    # Split the comment into individual strings
+    strings <- str_split(comment, ";\\s*")[[1]]
+    
+    # Remove duplicate strings while preserving the order
+    unique_strings <- unique(strings)
+    
+    # Remove QC error messages
+    filtered_strings <- setdiff(unique_strings, list_error_messages_qc)
+    
+    # Join the unique strings back together with "; " separator
+    cleaned_comment <- paste(filtered_strings, collapse = "; ")
+    
+    return(cleaned_comment)
+  }
+  
+  # Apply the cleaning function to each comment
+  index_data <- index_data %>%
+    mutate(comments_clean = sapply(comments, clean_comment, list_error_messages_qc = list_error_messages_qc)) %>%
+    rename(comments_init = comments, 
+           comments = comments_clean) %>%
+    relocate(comments)
+  
+  return(index_data)
+  
+}
+
 # ========================================================== -----
-# Create dlog_wi -----
-dlog_wi <- 
-  dlog %>%
-  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
+# Create all_vault ----
+#   Collate all image tables from vault ----
+# Get the list of all files in the vault
+vault_files <- 
+  tibble(path = list.files(path = path_vault, pattern = "\\.xlsx$", full.names = TRUE)) %>%
+  mutate(file_index = tools::file_path_sans_ext(basename(path)), 
+         id = str_sub(file_index, 1, 11)) %>%
+  filter(id %in% unique(dlog_wi$id))
+
+# Read and bind all files into one data tibble 
+all_vault_init <- unique(vault_files$path) %>%
+  map_dfr(read_xlsx_images_sheet)
+
+#   Tidy values ----
+all_vault <- 
+  all_vault_init %>%
+  rename(orig_certainty = qc_certainty) %>%
+  left_join(lookup_certainty, "orig_certainty") %>%
+  mutate(catalog_by = ifelse(catalog_by == "Vf", "Viviane Fuller", catalog_by), 
+         qc_by = ifelse(qc_by == "Vf", "Viviane Fuller", qc_by)) %>%
+  mutate(binomial_1 = 
+           case_when(
+             photo_type == "Unidentifiable" & 
+               binomial_1 == "Needs ID" ~ "N/A", 
+             TRUE ~ binomial_1), 
+         photo_type = 
+           case_when(
+             photo_type == "Unidentifiable" & 
+               binomial_1 %in% c("Rodent species", 
+                                 "Sciurus griseus",  
+                                 "Urocyon cinereoargenteus", 
+                                 "Mephitis mephitis") ~ "Animal", 
+             TRUE ~ photo_type)) %>%
+  select(-orig_certainty)
+
+# all_vault %>%
+#   write_csv(here(path_out_wi_migration, "all-vault_wi.csv"))
+#   Confirm no duplicate image files  -----
+# check_dupes_vault <-
+#   all_vault %>%
+#   get_dupes(image_id)
+# 
+# unique(check_dupes_vault$id)
+# ---------------------------------------------------------- -----
 # Collate all done_catalog image tables ----
 # To confirm values in binomial_2
 catalog_files <- 
@@ -106,66 +202,29 @@ catalog_files <-
   filter(id %in% unique(dlog_wi$id))
 
 # Read and bind all files into one data tibble 
-all_catalog <- unique(catalog_files$path) %>%
+all_catalog_init <- unique(catalog_files$path) %>%
   map_dfr(read_xlsx_images_sheet)
 
-#   Confirm no duplicate image files  -----
+all_catalog <- 
+  all_catalog_init %>%
+  rename(orig_certainty = qc_certainty) %>%
+  left_join(lookup_certainty, "orig_certainty") %>%
+  mutate(catalog_by = ifelse(catalog_by == "Vf", "Viviane Fuller", catalog_by), 
+         qc_by = ifelse(qc_by == "Vf", "Viviane Fuller", qc_by), 
+         image_id_x = paste(id, 
+                            str_pad(image_n, width = 5, side = "left", pad = "0"), 
+                            sep = "_")) %>%
+  distinct()
+
+#   Confirm no duplicate image files 
 check_dupes_catalog <-
   all_catalog %>%
   get_dupes(image_id)
 
 unique(check_dupes_catalog$id)
 
-# Collate all image tables from vault -----
-# Get the list of all files in the vault
-vault_files <- 
-  tibble(path = list.files(path = path_vault, 
-                           pattern = "\\.xlsx$",
-                           full.names = TRUE)) %>%
-  mutate(file_index = tools::file_path_sans_ext(basename(path)), 
-         id = str_sub(file_index, 1, 11)) %>%
-  filter(id %in% unique(dlog_wi$id))
-
-# Read and bind all files into one data tibble 
-all_vault_init <- unique(vault_files$path) %>%
-  map_dfr(read_xlsx_images_sheet)
-
-# Tidy values ----
-all_vault <- 
-  all_vault_init %>%
-  rename(orig_certainty = qc_certainty) %>%
-  left_join(lookup_certainty, "orig_certainty") %>%
-  mutate(catalog_by = ifelse(catalog_by == "Vf", "Viviane Fuller", catalog_by), 
-         qc_by = ifelse(qc_by == "Vf", "Viviane Fuller", qc_by)) %>%
-  select(-orig_certainty)
-names(all_vault)
-# 999,683 x 21
-
-# #   Confirm no duplicate image files  -----
-# check_dupes_vault <-
-#   all_vault %>%
-#   get_dupes(image_id)
-# 
-# unique(check_dupes_vault$id)
-#   Check timestamps ----
-# all_vault %>%
-#   select(id, 
-#          image_id, 
-#          photo_type, 
-#          starts_with("binomial"), 
-#          starts_with("count"), 
-#          comments, 
-#          catalog_by, 
-#          qc_by, 
-#          qc_certainty, 
-#          review, 
-#          good, 
-#          error, 
-#          date_time,
-#          image_n, 
-#          image_file)
-
-# ---------------------------------------------------------- -----
+# ========================================================== -----
+# BINOMIAL VALUES -----
 # Collate binomial columns ----
 binomial_long <- 
   all_vault %>%
@@ -180,28 +239,35 @@ binomial_long <-
         sep = "_",
         remove = FALSE)
 
-#   Confirm all binomial_2 are present -----
-has_binomial_2 <- 
+#   Check attributes ----
+#   Confirm nrow binomial_2 match  
+nrow_binomial_2 <- 
   all_vault %>% 
   drop_na(binomial_2) %>%
-  select(image_id)
+  select(image_id) %>%
+  nrow()
 
 binomial_long %>%
   filter(column_n  == 2) %>%
-  distinct(image_id)
+  distinct(image_id) %>%
+  nrow() == nrow_binomial_2
 
-#   Confirm all binomial_3 are present -----
-has_binomial_3 <- 
+#   Confirm nrow binomial_3 match  
+nrow_binomial_3 <- 
   all_vault %>% 
   drop_na(binomial_3) %>%
-  select(image_id)
+  select(image_id) %>%
+  nrow()
 
 binomial_long %>%
   filter(column_n  == 3) %>%
-  distinct(image_id)
+  distinct(image_id) %>%
+  nrow() == nrow_binomial_3
 
-#   Count rows ---- 
-nrow(all_vault) + nrow(has_binomial_2) + nrow(has_binomial_3)
+#   Count rows  
+nrow(all_vault) + nrow_binomial_2 + nrow_binomial_3
+nrow(binomial_long)
+# 1001047
 # ---------------------------------------------------------- -----
 # Collate count columns ----
 count_long <- 
@@ -215,126 +281,392 @@ count_long <-
         sep = "_",
         remove = TRUE)
 
-# START WORKING HERE -----
-# #   Check count values  ----
+#   Check attributes ----
 count_long %>%
   distinct(count) %>%
   arrange(count) %>%
   pull()
 
-large_counts <- 
-  count_long %>%
-  filter(count > 40) %>%
-  mutate(image_id = str_sub(image_id_n, 1, 17)) %>%
-  pull(image_id)
-
-binomial_long %>%
-  filter(image_id %in% large_counts)
-
 all_vault %>%
-  filter(image_id %in% large_counts)
+  distinct(count_1) %>%
+  pull()
+all_vault %>%
+  distinct(count_2) %>%
+  pull()
+all_vault %>%
+  distinct(count_3) %>%
+  pull()
 
-all_vault  %>%
-  filter(count_2 > 0) %>%
-  filter(is.na(binomial_2)) %>%
-  distinct(id)
-
-all_catalog %>%
-  filter(image_id %in% large_counts) %>%
-  filter(id %in% "P_D4_200722")
-
-all_catalog  %>%
-  filter(count_2 > 0) %>%
-  filter(is.na(binomial_2)) %>%
-  distinct(id)
-
-# 
-# all_vault %>%
-#   distinct(count_1) %>%
-#   pull()
-# all_vault %>%
-#   distinct(count_2) %>%
-#   pull()
-# all_vault %>%
-#   distinct(count_3) %>%
-#   pull()
-
-#   Combine binomial_long and count_long ----
+# ---------------------------------------------------------- -----
+# Create binomial_count_long ----
+# Combine binomial_long and count_long  
 binomial_count_long <- 
   binomial_long %>%
   left_join(count_long, "image_id_n") %>%
-  select(image_id, 
+  mutate(id = str_sub(image_id, 1, 11)) %>%
+  select(id, 
+         image_id, 
+         image_id_n,
          photo_type, 
          binomial, 
          count, 
          column_n)
 
-#   Check for rows without count ----
+#   Check attributes -----
+#   Check for rows without count 
 binomial_count_long %>%
   filter(is.na(count)) %>%
-  View()
+  distinct(binomial)
 
-#   Confirm all image_id are present ----
+#   Confirm all image_id are present
 all_vault %>% 
   distinct(image_id)  %>%
   left_join(binomial_count_long, "image_id") %>%
   filter(is.na(photo_type))
 
-#   Confirm values by species -----
 binomial_count_long %>%
-  filter(image_id == "P_D4_200722_01291")
-distinct(count) %>%
-  arrange(count) %>%
-  pull(count)
-distinct(binomial, count) %>%
-  arrange(binomial, count)
+  distinct(binomial, count) %>%
+  arrange(binomial, count) %>%
+  group_by(binomial, count) %>%
+  count() %>%
+  spread(count, n) %>%
+  View()
 
-# ---------------------------------------------------------- -----
+
+# Confirm values by binomial -----
+# Change binomial: Needs ID 
+binomial_unid <- 
+  binomial_count_long %>%
+  mutate(photo_type =
+           case_when(photo_type == "Animal" & binomial == "Unidentifiable" ~ "Unidentifiable",
+                     TRUE ~ photo_type)) %>%
+  mutate(binomial =
+           case_when(photo_type == "Unidentifiable" ~ "N/A",
+                     TRUE ~ binomial)) %>%
+  filter(binomial %in% c("Needs ID")) %>%
+  select(image_id, 
+         photo_type_vault = photo_type, 
+         binomial, 
+         count, 
+         column_n) %>%
+  left_join(all_catalog %>%
+              select(image_id, 
+                     photo_type, 
+                     starts_with("binomial"), 
+                     starts_with("count"), 
+                     comments), "image_id")
+
+#   For binomial_1 ----
+binomial_1_unid <- 
+  binomial_unid %>%
+  filter(column_n == 1) %>%
+  select(image_id:photo_type, 
+         binomial_1, 
+         count_1, 
+         comments) %>%
+  arrange(photo_type, 
+          binomial_1)  %>%
+  unite(photo_type_binomial_1, 
+        c(photo_type, 
+          binomial_1), 
+        sep = "_", 
+        remove = FALSE)
+
+binomial_1_unid_rev <- 
+  binomial_1_unid %>%
+  distinct(photo_type_vault, 
+           photo_type, 
+           binomial_1, 
+           count,
+           count_1,
+           photo_type_binomial_1) %>%
+  mutate(photo_type_rev = 
+           case_when(
+             binomial_1 == "Odocoileus hemionus" ~ "Animal", 
+             photo_type == "Blank" ~ "Blank", 
+             is.na(binomial_1) ~ "Unidentifiable", 
+             TRUE ~ photo_type)) %>%
+  mutate(binomial_1_rev = 
+           case_when(
+             photo_type_rev == "Blank" | photo_type_rev == "Unidentifiable" ~ "N/A", 
+             TRUE ~ binomial_1)) %>%
+  mutate(count_1_rev = 
+           case_when(
+             photo_type_rev == "Blank" | photo_type_rev == "Unidentifiable" ~ NA_real_, 
+             TRUE ~ count_1)) %>%
+  select(photo_type_binomial_1, 
+         photo_type_rev, 
+         binomial_1_rev, 
+         count_1_rev) %>%
+  distinct()
+
+binomial_1_unid_fixed <- 
+  binomial_1_unid %>%
+  left_join(binomial_1_unid_rev, "photo_type_binomial_1") %>%
+    select(image_id, 
+           photo_type = photo_type_rev, 
+           binomial = binomial_1_rev, 
+           count = count_1_rev, 
+           column_n) %>%
+    distinct()
+  
+#   For binomial_2 ----
+# Can have photo_type = Animal (for binomial_1) and binomial_2 = Unidentifiable
+binomial_2_unid <- 
+  binomial_unid %>%
+  filter(column_n == 2) %>%
+  select(image_id:photo_type, 
+         binomial_2, 
+         count_2, 
+         comments) %>%
+  arrange(photo_type, 
+          binomial_2)  %>%
+  unite(photo_type_binomial_2, 
+        c(photo_type, 
+          binomial_2), 
+        sep = "_", 
+        remove = FALSE)
+
+binomial_2_unid_rev <- 
+  binomial_2_unid %>%
+  distinct(photo_type_vault, 
+           photo_type, 
+           binomial,
+           binomial_2, 
+           count,
+           count_2,
+           comments,
+           photo_type_binomial_2) %>%
+  mutate(photo_type_rev = 
+           case_when(
+             is.na(binomial_2) & binomial == "Needs ID" ~ "Unidentifiable", 
+             TRUE ~ photo_type_vault)) %>%
+  mutate(binomial_2_rev = 
+           case_when(
+             photo_type_rev == "Unidentifiable" ~ "N/A", 
+             TRUE ~ binomial)) %>%
+  mutate(count_2_rev = 
+           case_when(
+             photo_type_rev == "Unidentifiable" ~ NA_real_, 
+             TRUE ~ count_2)) %>%
+  select(photo_type_binomial_2, 
+         photo_type_rev, 
+         binomial_2_rev, 
+         count_2_rev) %>%
+    distinct()
+
+binomial_2_unid_fixed <- 
+  binomial_2_unid %>%
+  left_join(binomial_2_unid_rev, "photo_type_binomial_2") %>%
+  select(image_id, 
+         photo_type = photo_type_rev, 
+         binomial = binomial_2_rev, 
+         count = count_2_rev, 
+         column_n) %>%
+  distinct()
+
+#   binomial_3: No rows -----
+# Combine corrected tables for binomial_1 and _2 ----
+binomial_unid_rev <- 
+  bind_rows(binomial_1_unid_fixed, binomial_2_unid_fixed) %>%
+  unite(image_id_n, 
+        c(image_id, column_n), 
+        sep = "_", 
+        remove = FALSE) %>%
+  mutate(id = str_sub(image_id, 1, 11)) %>%
+  select(id, 
+         image_id, 
+         image_id_n,
+         photo_type, 
+         binomial, 
+         count, 
+         column_n)
+
+# # Check row counts 
+# nrow(binomial_count_long)
+# binomial_count_long %>%
+#   filter(image_id_n %nin% list_image_id_n_drop) %>%
+#   nrow() - nrow(binomial_count_long)
+# Create binomial_count_long_revised with new values 
+binomial_count_long_revised <- 
+  binomial_count_long %>%
+  filter(image_id_n %nin% unique(binomial_unid_rev$image_id_n)) %>%
+  bind_rows(binomial_unid_rev) %>%
+  arrange(image_id_n)
+
+# Create corrected_counts  ----
+corrected_counts <-
+  binomial_count_long_revised %>%
+  # Set count to 0 for non-animal images
+  mutate(count = 
+           case_when(
+             is.na(count) ~ 0, 
+             photo_type == "Blank" ~ 0, 
+             # Leave any count values for Unidentifiable images
+             photo_type != "Unidentifiable" & binomial == "N/A" ~ 0,
+             TRUE ~ count))  %>%
+  # Change 0 count: for animal except cow
+  mutate(count =
+           case_when(
+             count == 0 & photo_type == "Animal" & 
+               binomial %nin% c("Bos taurus", "Unidentifiable") ~ 1, 
+             TRUE ~ count)) %>%
+  # Add attributes from all_vault 
+  left_join(all_vault %>%
+              select(image_id, 
+                     comments,
+                     catalog_by, 
+                     starts_with("qc"), 
+                     review, 
+                     good, 
+                     error, 
+                     date_time, 
+                     image_file), "image_id")
+# ========================================================== -----
+# START WORKING HERE -----
+# COMMENTS ----
 # Simplify comments column for image tables in vault ----
-# Confirm needs review have done_qc ----
+# Define error messages ----
+more_error_messages <- 
+  tibble(error_message = 
+           c("CONFIRM ID: unidentifiable animal", 
+             "NEEDS REVIEW: flagged by cataloger for expert review", 
+             "NEEDS ID: unknown image flagged for expert review", 
+             "ERROR: error flagged by cataloger", 
+             "CONFIRM COUNT: blank with count", 
+             "ADD COUNT: animal missing; count", 
+             "ADD COUNT: animal missing; count",
+             "EXCLUDE IMAGE: error flagged by cataloger"))
+
 error_messages <- 
   lookup_photo_type_binomial %>%
   drop_na(error_message) %>%
   distinct(error_message) %>%
+  bind_rows(more_error_messages) %>%
   arrange(error_message) 
 
 list_error_messages_qc <- 
   error_messages %>%
   filter(str_detect(error_message, "CONFIRM|FIX|NEEDS")) %>%
-  pull()
+  pull() 
+  
 
+# [x] Confirm needs review have done_qc ----
 # Combine multiple patterns into a single regular expression
 patterns_error_qc <- str_c(list_error_messages_qc, collapse = "|")
 
 comments_error_qc <- 
-  all_vault %>%
+  corrected_counts %>%
   drop_na(comments) %>%
   select(comments, 
-         review, 
          starts_with("qc")) %>%
   distinct() %>%
   filter(str_detect(comments, patterns_error_qc)) 
 
 comments_error_qc %>%
   distinct(review)
+
+corrected_counts %>%
+  filter(comments == "CONFIRM ID: unidentifiable animal; Unidentifiable animal" & review == FALSE) %>%
+  distinct(id, photo_type, binomial_1)
+
+comments_error_qc %>%
+  filter(review == FALSE)
+
 comments_error_qc %>%
   distinct(qc_by)
 comments_error_qc %>%
   distinct(qc_certainty)
 
+# [ ] Remove resolved qc comments ----
+
+# Since all qc errors have been addressed, remove those comments
+# Define a named vector with patterns and their replacements
+replacements <- c(
+  "review\\." = "review;",
+  "missing\\." = "missing;",
+  "CONFIRM ID: special species\\." = "CONFIRM ID: special species;",
+  "CONFIRM ID: unidentifiable animal\\." = "CONFIRM ID: unidentifiable animal;",
+  "CONFIRM COUNT: blank with count\\." = "CONFIRM COUNT: blank with count;",
+  "ADD COUNT: animal missing; count" = "ADD COUNT: animal missing count",
+  # "\\.;" = ";",
+  "EXCLUDE IMAGE: error flagged by cataloger" = "", 
+  "ERROR: error flagged by cataloger; ; Do not catalog:" = "Do not catalog:"
+)
+
+# Function to apply all replacements
+# apply_replacements <- function(text, replacements) {
+#   for (pattern in names(replacements)) {
+#     replacement <- replacements[[pattern]]
+#     text <- str_replace_all(text, fixed(pattern), replacement)
+#   }
+#   return(text)
+# }
+# # Define a function to remove the patterns
+fxn_tidy_comment_string <- function(index_data) {
+  
+  index_data %>%
+    mutate(comments = str_trim(comments, side = "both"), 
+           comments = str_trim(comments, side = "both",  ";"),
+           comments = str_replace_all(comments, ";\\s*;", ";"), 
+           comments = str_trim(comments, side = "both"))
+}
+
+# distinct_comments <- 
+corrected_counts %>%
+  drop_na(comments) %>%
+  distinct(comments) %>%
+    rename(comments_orig = comments) %>%
+    mutate(comments = str_replace_all(comments_orig, replacements)) %>%
+    
+    # Tried rowwise
+    # rowwise() %>%
+    # mutate(comments_clean = {
+    #   cleaned_comment <- comments
+    #   for (pattern in names(replacements)) {
+    #     replacement <- replacements[[pattern]]
+    #     cleaned_comment <- str_replace_all(cleaned_comment, pattern, replacement)
+    #   }
+    #   cleaned_comment
+    # }) %>%
+    # ungroup() %>%
+
+  
+    # Apply the replacements in a single mutate call
+    # mutate(comments_clean = sapply(comments, apply_replacements, replacements = replacements)) %>%
+    # distinct(comments_clean) %>%
+    # 
+    # arrange(comments_clean) %>%
+    # View() 
+  
+  fxn_remove_error_message(list_error_messages_qc) %>%
+    distinct(comments)  %>%
+    fxn_tidy_comment_string()  %>%
+  arrange(comments) 
+
+
+# Apply the function to the comments column
+subset_comments <- 
+  corrected_counts  %>%
+  drop_na(comments) %>%
+  distinct(comments) %>%
+  filter(str_detect(comments, "NEEDS")) %>%
+  fxn_remove_duplicates()
+
+# Same but for errors: exclude, error, etc. ----
+
 # Distinct comments ----
 
 
-distinct_comments <- 
-  all_vault %>%
-  drop_na(comments) %>%
-  distinct(comments) %>%
-  mutate(length = nchar(comments), 
-         n_sc = str_count(comments, ";")) 
-
 # ---------------------------------------------------------- -----
 # Create taxonomic data ----
+# NOTE: THE WI TABLE IS ON MBP ----
 # Distinct species 
+corrected_counts %>%
+  distinct(binomial) %>%
+  arrange(binomial) %>%
+  write_csv(here(path_out_wi_migration, 
+                 "distinct-binomials.csv"))
 
 # Crosswalk with wi_taxon_id 
 # ---------------------------------------------------------- -----
