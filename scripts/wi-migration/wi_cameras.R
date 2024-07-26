@@ -11,12 +11,17 @@ source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # ---------------------------------------------------------- -----
-# Define site  ----
+# Define site and attributes ----
 index_site = "PWD"
-index_year = "2024"
+
 fxn_define_camera_project(index_site)
+
 path_out_wi_migration <- here("output/wi-migration")
-# project_id = "Pepperwood"
+
+dlog_wi <- 
+  dlog %>%
+  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
+
 # ========================================================== -----
 # DEFINE LEGACY ATTRIBUTES ----
 # Create dlog for legacy data ----
@@ -120,26 +125,38 @@ legacy_attributes_deployment %>%
 # ========================================================== -----
 # CAMERA METADATA ----
 # Get camera info from captain's log ----
-camera_sn_dates <- read_xlsx(here(path_out_wi_migration, 
-                                    "camera_metadata.xlsx"), 
-                               sheet = "camera-dates") %>%
+camera_sn_dates <- read_xlsx(here(path_site, 
+                                    "pwd_serial-numbers.xlsx"), 
+                               sheet = "camera_sn_dates") %>%
   mutate(date_from = as_date(date_from), 
          date_to = as_date(date_to)) %>%
   filter(grid == "P") %>%
-  select(camera, date_from, date_to, serial_number)
+  select(camera, 
+         sn_from = date_from, 
+         sn_to = date_to,
+         serial_number)
 
 new_sn <- 
-  dlog_pwd %>%
-  select(id, camera, date_from)  %>%
+  dlog_wi %>%
+  filter(migrate_wi == TRUE) %>%
+  select(id, camera, date_from, date_to)  %>%
   left_join(camera_sn_dates, by = "camera") %>%
-  filter(date_from.x >= date_from.y & date_from.x <= date_to) %>%
+  filter(date_to >= sn_from & date_to <= sn_to & date_from >= sn_from & date_from <= sn_to) %>%
   select(id, 
          serial_number) %>%
   distinct()
 
+dlog_wi %>%
+  filter(migrate_wi == TRUE) %>%
+  select(id,
+         serial_number_dlog = serial_number) %>%
+  left_join(new_sn, "id") %>%
+  filter(serial_number_dlog != serial_number)
+  
+
 # new_sn %>%
 #   write_csv(here(path_out_wi_migration,
-#                  "camera_serial-number_revised_2.csv"))
+#                  "camera_serial-number_revised_4.csv"))
 
 dlog_pwd %>%
   select(id, camera, 
@@ -157,5 +174,31 @@ dlog_pwd %>%
 # model	:	get from captain's log, deployment summary
 # serial_number	:	get from captain's log, deployment summary
 # year_purchased	:	confirm
+#
+list_columns_camera <- c("project_id",
+                         "camera_id",
+                         "make",
+                         "model",
+                         "serial_number",
+                         "year_purchased")
+
+all_vault_long_comments_taxon %>%
+  mutate(highlighted = ifelse(good == TRUE, 1, 0)) %>%
+  
+  rename(deployment_id = id, 
+         location = image_file, 
+         uncertainty = qc_certainty, 
+         timestamp = date_time, 
+         number_of_objects = count, 
+         individual_animal_notes = comments) %>%
+  mutate(age = "Unknown", 
+         sex = "Unknown", 
+         animal_recognizable = "No", 
+         individual_id = "None", 
+         markings = "None", 
+         external_sequence_id = NULL, 
+         sequence_start_time = NULL) %>%
+  relocate(any_of(list_columns_image))
+# Save as metadata_camera_all.csv  -----
 #
 # ========================================================== -----
