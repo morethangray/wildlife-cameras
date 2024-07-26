@@ -146,25 +146,19 @@ new_sn <-
          serial_number) %>%
   distinct()
 
-dlog_wi %>%
-  filter(migrate_wi == TRUE) %>%
-  select(id,
-         serial_number_dlog = serial_number) %>%
-  left_join(new_sn, "id") %>%
-  filter(serial_number_dlog != serial_number)
-  
-
 # new_sn %>%
 #   write_csv(here(path_out_wi_migration,
 #                  "camera_serial-number_revised_4.csv"))
 
-dlog_pwd %>%
-  select(id, camera, 
-         serial_number_init = serial_number) %>%
-  left_join(new_sn, "id") %>%
-  distinct() %>%
-  filter(serial_number_init != serial_number)
+
+camera_inventory <- read_xlsx(here(path_site, 
+                                  "pwd_serial-numbers.xlsx"), 
+                             sheet = "camera inventory") %>%
   
+  select(serial_number, 
+         make, 
+         model, 
+         year)
 
 # Create Camera metadata ----
 #
@@ -182,23 +176,22 @@ list_columns_camera <- c("project_id",
                          "serial_number",
                          "year_purchased")
 
-all_vault_long_comments_taxon %>%
-  mutate(highlighted = ifelse(good == TRUE, 1, 0)) %>%
-  
-  rename(deployment_id = id, 
-         location = image_file, 
-         uncertainty = qc_certainty, 
-         timestamp = date_time, 
-         number_of_objects = count, 
-         individual_animal_notes = comments) %>%
-  mutate(age = "Unknown", 
-         sex = "Unknown", 
-         animal_recognizable = "No", 
-         individual_id = "None", 
-         markings = "None", 
-         external_sequence_id = NULL, 
-         sequence_start_time = NULL) %>%
-  relocate(any_of(list_columns_image))
+metadata_camera_all <- 
+  dlog_wi %>%
+  filter(migrate_wi == TRUE) %>%
+  select(id, serial_number) %>%
+
+  left_join(camera_inventory, "serial_number") %>%
+  mutate(project_id = "Pepperwood", 
+         camera_id = serial_number) %>%
+  rename(deployment_id = id,  
+         year_purchased = year) %>%
+  select(all_of(list_columns_camera), 
+         deployment_id)
+
 # Save as metadata_camera_all.csv  -----
-#
+metadata_camera_all %>%
+    write_csv(here(path_out_wi_migration, "metadata", 
+                   "metadata_camera_all.csv"))
+  
 # ========================================================== -----

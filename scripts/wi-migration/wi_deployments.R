@@ -122,9 +122,9 @@ deployments <- read_csv(here(path_out_wi_migration, "metadata_deployments_all.cs
 # PROJECT METADATA ----
 # Create Project metadata ----
 project <- 
-  tibble(project_name = "Pepperwood camera grid",
+  tibble(project_name = "Pepperwood Wildlife Camera Grid",
          project_id = "Pepperwood",
-         project_short_name = "Pepperwood",
+         project_short_name = "PWD",
          project_objectives = "To collect observation data on terrestrial wildlife species present at Pepperwood Preserve using a long-term grid of 20 cameras",
          project_species = "Multiple",
          project_species_individual = "None",
@@ -138,7 +138,7 @@ project <-
          project_individual_animals = "No",
          project_blank_images = "No",
          project_sensor_cluster = "No",
-         project_admin = "None",
+         project_admin = "Pepperwood Foundation",
          project_admin_email = "research@pepperwoodpreserve.org",
          country_code = "USA",
          embargo = 48,
