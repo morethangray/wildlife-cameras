@@ -562,7 +562,7 @@ all_vault_long_comments <-
              date_time = col_datetime(format = "")
            ))
   
-# ---------------------------------------------------------- -----
+# ========================================================== -----
 # Create taxonomic data ----
 #   Review binomials in data set ----
 # Distinct species 
@@ -621,9 +621,7 @@ all_vault_long_comments_taxon %>%
     distinct(id)
  
 # ---------------------------------------------------------- -----
-# ---------------------------------------------------------- -----
 # Create Image metadata ----
-
 list_columns_image <- c("project_id",
                         "deployment_id",
                         "image_id",
@@ -666,31 +664,7 @@ all_vault_long_comments_taxon %>%
          external_sequence_id = NULL, 
          sequence_start_time = NULL) %>%
   relocate(any_of(list_columns_image))
-#
-# project_id	:	confirm
-# deployment_id	:	Create from id
-# image_id	:	Create from image_id
-# location	:	create file path with image
-# identified_by	:	create using qc_by, append catalog_by in NA
-# wi_taxon_id	:	create duplicate entries for images with 2+ species
-# class	:	Create from species attributes table
-# order	:	Create from species attributes table
-# family	:	Create from species attributes table
-# genus	:	Create from species attributes table
-# species	:	Create from species attributes table
-# common_name	:	Create from species attributes table
-# uncertainty	:	Create from qc_certainty
-# timestamp	:	Create from date_time
-# number_of_objects	:	create duplicate entries for images with 2+ species
-# highlighted	:	convert good = TRUE to 1, good = FALSE to 0
-# age	:	Unknown
-# sex	:	Unknown
-# animal_recognizable	:	No
-# individual_id	:	None
-# individual_animal_notes	:	Create from comments
-# markings	:	None
-# external_sequence_id	:	NULL
-# sequence_start_time	:	NULL
+# Save as deployment_images.csv -----
 #
 # ========================================================== -----
 
