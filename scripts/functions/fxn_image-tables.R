@@ -1682,7 +1682,6 @@ fxn_tidy_for_vault <- function(index_site){
                                        27, 28)) %>%
     left_join(lookup_qc_initials, "qc_initials_lower")
   
-  
   # For legacy data 
   # dir_table <-
   #   fxn_dir_table_map(index_site,
@@ -2414,6 +2413,7 @@ fxn_add_flags <- function(index_data){
       TRUE ~ FALSE
     )
   }
+  
   
   # Convert review, error, good columns to uppercase
   # Standardize as logical values

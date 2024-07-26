@@ -139,8 +139,8 @@ all_vault <-
 # 
 # unique(check_dupes_vault$id)
 # #  Write/read csv ----
-all_vault %>%
-  write_csv(here(path_out_wi_migration, "all-vault_wi.csv"))
+# all_vault %>%
+#   write_csv(here(path_out_wi_migration, "all-vault_wi.csv"))
 
 all_vault <- read_csv(here(path_out_wi_migration, "all-vault_wi.csv"),
                       col_types = cols(
@@ -319,20 +319,17 @@ binomial_count_long <-
       case_when(
         !is.na(action) & binomial != "N/A" ~ "Animal",
         !is.na(action) ~ "Maintenance",
-        TRUE ~ photo_type), 
+        TRUE ~ photo_type),
     
-    count = 
-      case_when(
-        # Replace any NA with 0
-        is.na(count) ~ 0, 
-        
-        # Change 0 count for Animal except cow
-        count == 0 & photo_type == "Animal" & binomial %nin% c("Bos taurus") ~ 1, 
-        # Set count for Blank or Maintenance to 0
-        photo_type == "Blank" | photo_type == "Maintenance" | photo_type == "Unidentifiable" ~ 0,
-        TRUE ~ count)
-    
-  ) %>%
+    # Set count NA if there are no animals or identified objects in image
+    count = ifelse(binomial == "N/A", NA, count)) %>%
+  
+  # Change 0 count for Animal except cow
+  mutate(count =
+           case_when(
+             count == 0 & photo_type == "Animal" & binomial %nin% c("Bos taurus") ~ 1,
+             TRUE ~ count)) %>%
+  
   arrange(image_id_n) %>%
   select(image_id_n, 
          action, 
@@ -343,6 +340,8 @@ binomial_count_long <-
          image_id,
          column_n) 
 
+
+#
 # #   Check attributes -----
 # #   Check for rows without count 
 # binomial_count_long %>%
@@ -406,30 +405,38 @@ all_vault_long <- read_csv(here(path_out_wi_migration, "all_vault_long_wi.csv"),
 # COMMENTS ----
 # Simplify comments column for image tables in vault 
 # Define error messages ----
-more_error_messages <- tibble(error_message = c(
-  "CONFIRM ID: unidentifiable animal", 
-  "NEEDS REVIEW: flagged by cataloger for expert review", 
-  "NEEDS ID: unknown image flagged for expert review", 
-  "ERROR: error flagged by cataloger", 
-  "CONFIRM COUNT: blank with count", 
-  "ADD COUNT: animal missing; count", 
-  "ADD COUNT: animal missing; count",
-  "EXCLUDE IMAGE: error flagged by cataloger"
-))
+error_messages <- 
+  read_excel(here(path_in, 
+                  "binomial-crosswalk.xlsx"), 
+             sheet = "error-messages") %>%
+  select(error_type,
+         error_message)   
 
-# Combine error messages ----
-error_messages <- lookup_photo_type_binomial %>%
-  drop_na(error_message) %>%
-  distinct(error_message) %>%
-  bind_rows(more_error_messages) %>%
-  arrange(error_message)
+# more_error_messages <- tibble(error_message = c(
+#   "CONFIRM ID: unidentifiable animal",
+#   "NEEDS REVIEW: flagged by cataloger for expert review",
+#   "NEEDS ID: unknown image flagged for expert review",
+#   "ERROR: error flagged by cataloger",
+#   "CONFIRM COUNT: blank with count",
+#   "ADD COUNT: animal missing; count",
+#   "ADD COUNT: animal missing; count",
+#   "EXCLUDE IMAGE: error flagged by cataloger"
+# ))
 
-# Filter error messages for QC ----
+# Combine error messages 
+# error_messages <- lookup_photo_type_binomial %>%
+#   drop_na(error_message) %>%
+#   distinct(error_message) %>%
+#   bind_rows(more_error_messages) %>%
+#   arrange(error_message)
+
+
+# [x] Confirm needs review have done_qc ----
+# Filter error messages for QC  
 list_error_messages_qc <- error_messages %>%
   filter(str_detect(error_message, "ADD|CONFIRM|FIX|NEEDS")) %>%
   pull(error_message)
 
-# [x] Confirm needs review have done_qc ----
 # Combine multiple patterns into a single regular expression
 patterns_error_qc <- str_c(list_error_messages_qc, collapse = "|")
 
@@ -457,25 +464,36 @@ comments_error_qc %>%
 
 # [x] Remove resolved qc comments ----
 
+fxn_simplify_comments <- function(){
+  
+}
+
 #   Define a named vector with patterns and their replacements ----
+fxn_replace_comment_patterns <- function(comments){
+  
+  replacements <- c(
+    "review\\." = "review;",
+    "missing\\." = "missing;",
+    "CONFIRM ID: special species\\." = "CONFIRM ID: special species;",
+    "CONFIRM ID: unidentifiable animal\\." = "CONFIRM ID: unidentifiable animal;",
+    "CONFIRM COUNT: blank with count\\." = "CONFIRM COUNT: blank with count;",
+    "ADD COUNT: animal missing; count" = "ADD COUNT: animal missing count",
+    "EXCLUDE IMAGE: error flagged by cataloger" = "", 
+    "ADD COUNT: animal missing count" = "",
+    "ERROR: error flagged by cataloger; Do not catalog" = "Do not catalog",
+    "ERROR: error flagged by cataloger; ; Do not catalog:" = "Do not catalog:", 
+    "Camera knocked down; Camera knocked down" = "Camera knocked down; ",
+    "Camera knocked down; Camera Knocked Down" = "Camera knocked down",
+    "Camera knocked down; Camera knocked over" = "Camera knocked down; ", 
+    "Camera knocked down; Camera down" = "Camera knocked down; ", 
+    "; ," = ";"
+  )
+  
+  str_replace_all(comments, replacements))
+    
+}
 # Since all qc errors have been addressed, remove those comments
-replacements <- c(
-  "review\\." = "review;",
-  "missing\\." = "missing;",
-  "CONFIRM ID: special species\\." = "CONFIRM ID: special species;",
-  "CONFIRM ID: unidentifiable animal\\." = "CONFIRM ID: unidentifiable animal;",
-  "CONFIRM COUNT: blank with count\\." = "CONFIRM COUNT: blank with count;",
-  "ADD COUNT: animal missing; count" = "ADD COUNT: animal missing count",
-  "EXCLUDE IMAGE: error flagged by cataloger" = "", 
-  "ADD COUNT: animal missing count" = "",
-  "ERROR: error flagged by cataloger; Do not catalog" = "Do not catalog",
-  "ERROR: error flagged by cataloger; ; Do not catalog:" = "Do not catalog:", 
-  "Camera knocked down; Camera knocked down" = "Camera knocked down; ",
-  "Camera knocked down; Camera Knocked Down" = "Camera knocked down",
-  "Camera knocked down; Camera knocked over" = "Camera knocked down; ", 
-  "Camera knocked down; Camera down" = "Camera knocked down; ", 
-  "; ," = ";"
-)
+
 
 #   Define conditional replacement of "Unidentifiable bird" ----
 replace_unidentified_bird <- function(binomial, comments) {
@@ -483,20 +501,18 @@ replace_unidentified_bird <- function(binomial, comments) {
          str_replace_all(comments, "Unidentifiable bird", ""),
          comments)
 }
-#   Define function to clean text ----
-fxn_clean_text <- function(text) {
-  text %>%
-    str_remove_all("^\\s*;\\s*|\\s*;\\s*$") %>%
-    str_remove_all("^\\s*\\.\\s*|\\s*\\.\\s*$") %>%
-    str_remove_all("^\\s*,\\s*|\\s*\\,\\s*$") %>%
-    str_trim()
-}
 
 #   Define function to remove error messages ----
+# index_messages = error_messages 
 fxn_remove_error_message <- function(index_data, index_list) {
   
+  list_qc_error <- error_messages %>%
+    filter(str_detect(error_message, "ADD|CONFIRM|FIX|NEEDS")) %>%
+    pull(error_message)
+  
+  
   # Define a helper function to clean individual comments
-  clean_comment <- function(comment, list_error_messages_qc) {
+  fxn_clean_comment <- function(comment, index_list) {
     # Split the comment into individual strings
     strings <- str_split(comment, ";\\s*")[[1]]
     
@@ -504,7 +520,7 @@ fxn_remove_error_message <- function(index_data, index_list) {
     unique_strings <- unique(strings)
     
     # Remove QC error messages
-    filtered_strings <- setdiff(unique_strings, list_error_messages_qc)
+    filtered_strings <- setdiff(unique_strings, index_list = list_qc_error)
     
     # Join the unique strings back together with "; " separator
     cleaned_comment <- paste(filtered_strings, collapse = "; ")
@@ -512,10 +528,19 @@ fxn_remove_error_message <- function(index_data, index_list) {
     return(cleaned_comment)
   }
   
-  # Apply the cleaning function to each comment
+  #   Define function to clean text ----
+  fxn_clean_text <- function(text) {
+    text %>%
+      str_remove_all("^\\s*;\\s*|\\s*;\\s*$") %>%
+      str_remove_all("^\\s*\\.\\s*|\\s*\\.\\s*$") %>%
+      str_remove_all("^\\s*,\\s*|\\s*\\,\\s*$") %>%
+      str_trim()
+  }
+  
+  # Apply the cleaning functions to each comment ----
   index_data <- index_data %>%
-    mutate(comments_clean = sapply(comments, clean_comment, list_error_messages_qc = index_list)) %>%
-    rename(comments_init = comments, comments = comments_clean) %>%
+    rename(comments_init = comments) %>%
+    mutate(comments = sapply(comments_init, fxn_clean_comment, index_list = list_qc_error)) %>%
     relocate(comments) %>%
     mutate(comments = str_trim(comments, side = "both"), 
            comments = str_replace_all(comments, ";\\s*;", ";"), 
