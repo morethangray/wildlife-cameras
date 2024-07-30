@@ -391,13 +391,7 @@ binomial_count_long <- read_csv(here(path_out_wi_migration, "binomial_count_long
 # ========================================================== -----
 # COMMENTS ----
 # Simplify comments column for image tables in vault 
-# Define error messages ----
-error_messages <- 
-  read_excel(here(path_in, 
-                  "binomial-crosswalk.xlsx"), 
-             sheet = "error-messages") %>%
-  select(error_type,
-         error_message)   
+ 
 
 # #  Check attributes ----
 # # Filter error messages for QC  
@@ -431,6 +425,106 @@ error_messages <-
 #   distinct(qc_certainty)
 
 # Remove resolved qc comments ----
+# fxn_tidy_comments ----
+fxn_tidy_comments <- function(index_data){
+  
+  #   Function to conditionally replace "Unidentifiable bird" ----
+  replace_unidentified_bird <- function(binomial, comments) {
+    
+    ifelse(binomial == "Bird species", str_replace_all(comments, "Unidentifiable bird", ""), comments)
+  }
+  
+  #   Function to replace comment patterns ----
+  fxn_replace_comment_patterns <- function(comments) {
+    
+    # Define a named vector with patterns and their replacements ----
+    replacements <- c(
+      "review\\." = "review;",
+      "missing\\." = "missing;",
+      "CONFIRM ID: special species\\." = "CONFIRM ID: special species;",
+      "CONFIRM ID: unidentifiable animal\\." = "CONFIRM ID: unidentifiable animal;",
+      "CONFIRM COUNT: blank with count\\." = "CONFIRM COUNT: blank with count;",
+      "ADD COUNT: animal missing; count" = "ADD COUNT: animal missing count",
+      "EXCLUDE IMAGE: error flagged by cataloger" = "", 
+      "ADD COUNT: animal missing count" = "",
+      "ERROR: error flagged by cataloger; Do not catalog" = "Do not catalog",
+      "ERROR: error flagged by cataloger; ; Do not catalog:" = "Do not catalog:", 
+      "Camera knocked down; Camera knocked down" = "Camera knocked down; ",
+      "Camera knocked down; Camera Knocked Down" = "Camera knocked down",
+      "Camera knocked down; Camera knocked over" = "Camera knocked down; ", 
+      "Camera knocked down; Camera down" = "Camera knocked down; ", 
+      "; ," = ";"
+    )
+    
+    str_replace_all(comments, replacements)
+  }
+  
+  #   Function to remove error messages ----
+  # index_errors = error_messages
+  fxn_remove_error_message <- function(index_data) {
+    
+    # Define error messages ----
+    list_qc_error <- 
+      read_excel(here(path_in, 
+                      "binomial-crosswalk.xlsx"), 
+                 sheet = "error-messages") %>%
+      select(error_type,
+             error_message)  %>%
+      filter(str_detect(error_message, "ADD|CONFIRM|FIX|NEEDS")) %>%
+      pull(error_message)
+    
+    # Remove duplicate text strings  ----
+    fxn_clean_comment <- function(comment) {
+      # Split the comment into individual strings
+      strings <- str_split(comment, ";\\s*")[[1]]
+      # Remove duplicate strings  
+      unique_strings <- unique(strings)
+      # Remove QC error messages
+      filtered_strings <- setdiff(unique_strings, list_qc_error)
+      # Join the unique strings back together with "; " separator
+      paste(filtered_strings, collapse = "; ")
+    }
+    
+    # Remove leading, trailing space and ; ----
+    fxn_clean_text <- function(text) {
+      text %>%
+        str_remove_all("^\\s*;\\s*|\\s*;\\s*$") %>%
+        str_remove_all("^\\s*\\.\\s*|\\s*\\.\\s*$") %>%
+        str_remove_all("^\\s*,\\s*|\\s*,\\s*$") %>%
+        str_trim()
+    }
+    
+    # Create lookup table of clean comments ----
+    output_table <-
+      index_data %>%
+      mutate(comments = sapply(comments, fxn_clean_comment)) %>%
+      mutate(comments = sapply(comments, fxn_clean_text),
+             comments = str_trim(comments)) 
+    
+    return(output_table)
+    
+  }
+  
+  #   Create tidy comments ----
+  lookup_comments <-
+    index_data %>%
+    drop_na(comments) %>%
+    distinct(binomial, comments) %>%
+    mutate(comments_orig = comments) %>%
+    mutate(comments = fxn_replace_comment_patterns(comments)) %>%
+    fxn_remove_error_message() %>%
+    select(-binomial) %>%
+    distinct()
+  
+  all_vault_long_comments <- 
+    index_data  %>%
+    rename(comments_orig = comments) %>%
+    left_join(lookup_comments, "comments_orig") %>%
+    select(-comments_orig) %>%
+    mutate(comments = replace_unidentified_bird(binomial, comments)) %>%
+    distinct()
+  
+}
 #   Function to conditionally replace "Unidentifiable bird" ----
 replace_unidentified_bird <- function(binomial, comments) {
   
@@ -461,7 +555,6 @@ fxn_replace_comment_patterns <- function(comments) {
   
   str_replace_all(comments, replacements)
 }
-
 
 #   Function to remove error messages ----
 # index_errors = error_messages
@@ -519,6 +612,8 @@ all_vault_long_comments <-
   select(-comments_orig) %>%
   mutate(comments = replace_unidentified_bird(binomial, comments)) %>%
   distinct()
+
+all_vault_long_comments <- fxn_tidy_comments(binomial_count_long)
 
 dupes <- all_vault_long_comments %>%
   get_dupes(image_id_n)
