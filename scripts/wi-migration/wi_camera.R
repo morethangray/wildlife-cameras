@@ -5,23 +5,15 @@ library(tidyverse)   ## To manipulate data frames
 library(here)   ## To manage directories
 #
 source(here("scripts/functions/fxn_utilities.R"))
-source(here("scripts/functions/fxn_tracking.R"))
-source(here("scripts/functions/fxn_folders.R"))
-source(here("scripts/functions/fxn_images.R"))
+source(here("scripts/functions/fxn_utilities_wi.R"))
+# source(here("scripts/functions/fxn_tracking.R"))
+# source(here("scripts/functions/fxn_folders.R"))
+# source(here("scripts/functions/fxn_images.R"))
 source(here("scripts/functions/fxn_image-tables.R"))
 # 
 # ---------------------------------------------------------- -----
 # Define site and attributes ----
-index_site = "PWD"
-
 fxn_define_camera_project(index_site)
-
-path_out_wi_migration <- here("output/wi-migration")
-
-dlog_wi <- 
-  dlog %>%
-  filter(migrate_wi %in% c("TRUE", "MAYBE")) 
-
 # ========================================================== -----
 # DEFINE LEGACY ATTRIBUTES ----
 # Create dlog for legacy data ----
@@ -150,48 +142,5 @@ new_sn <-
 #   write_csv(here(path_out_wi_migration,
 #                  "camera_serial-number_revised_4.csv"))
 
-
-camera_inventory <- read_xlsx(here(path_site, 
-                                  "pwd_serial-numbers.xlsx"), 
-                             sheet = "camera inventory") %>%
-  
-  select(serial_number, 
-         make, 
-         model, 
-         year)
-
-# Create Camera metadata ----
-#
-# project_id	:	confirm
-# camera_id	:	define from serial number
-# make	:	get from captain's log, deployment summary
-# model	:	get from captain's log, deployment summary
-# serial_number	:	get from captain's log, deployment summary
-# year_purchased	:	confirm
-#
-list_columns_camera <- c("project_id",
-                         "camera_id",
-                         "make",
-                         "model",
-                         "serial_number",
-                         "year_purchased")
-
-metadata_camera_all <- 
-  dlog_wi %>%
-  filter(migrate_wi == TRUE) %>%
-  select(id, serial_number) %>%
-
-  left_join(camera_inventory, "serial_number") %>%
-  mutate(project_id = "Pepperwood", 
-         camera_id = serial_number) %>%
-  rename(deployment_id = id,  
-         year_purchased = year) %>%
-  select(all_of(list_columns_camera), 
-         deployment_id)
-
-# Save as metadata_camera_all.csv  -----
-metadata_camera_all %>%
-    write_csv(here(path_out_wi_migration, "metadata", 
-                   "metadata_camera_all.csv"))
   
 # ========================================================== -----
