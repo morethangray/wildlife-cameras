@@ -8,7 +8,7 @@ path_out_wi_migration <- here("output/wi-migration")
 
 dlog_wi <- 
   dlog %>%
-  filter(migrate_wi %in% c("TRUE", "MAYBE")) %>%
+  filter(migrate_wi %in% c("TRUE")) %>%
   arrange(id)
 # ========================================================== -----
 # Define functions -----
@@ -24,7 +24,7 @@ fxn_create_metadata_deployment <- function(){
     select(camera, lon_x, lat_y)
   
   # Define column names 
-  list_columns_deployment <- c("project_id",
+  list_columns_deployment <<- c("project_id",
                                "deployment_id",
                                "subproject_name",
                                "subproject_design",
@@ -123,7 +123,7 @@ fxn_create_metadata_project <- function(){
 #   fxn_create_metadata_camera ----
 fxn_create_metadata_camera <- function(){
   
-  list_columns_camera <- c("project_id",
+  list_columns_camera <<- c("project_id",
                            "camera_id",
                            "make",
                            "model",
@@ -137,7 +137,8 @@ fxn_create_metadata_camera <- function(){
     select(serial_number, 
            make, 
            model, 
-           year)
+           year) %>%
+    mutate(year_purchased = as_date(paste0(year, "-01-01")))  
   
   camera <- 
     dlog_wi %>%
@@ -147,8 +148,7 @@ fxn_create_metadata_camera <- function(){
     left_join(camera_inventory, "serial_number") %>%
     mutate(project_id = "Pepperwood", 
            camera_id = serial_number) %>%
-    rename(deployment_id = id,  
-           year_purchased = year) %>%
+    rename(deployment_id = id) %>%
     select(all_of(list_columns_camera), 
            deployment_id)
   
@@ -159,7 +159,7 @@ fxn_create_metadata_camera <- function(){
 # index_type = "archive"
 fxn_create_metadata_image <- function(index_type){
   
-  list_columns_image <- c("project_id",
+  list_columns_image <<- c("project_id",
                           "deployment_id",
                           "image_id",
                           "location",
@@ -193,7 +193,8 @@ fxn_create_metadata_image <- function(index_type){
     fxn_correct_typos() %>%
     fxn_tidy_comments() %>%
     fxn_add_taxonomic_attributes() %>%
-    fxn_create_identified_by()
+    fxn_create_identified_by() %>%
+    fxn_add_file_info()
   
   image <- 
     tidy_vault_long %>%
@@ -201,13 +202,11 @@ fxn_create_metadata_image <- function(index_type){
     left_join(all_vault %>%
                 select(image_id, 
                        good, 
-                       date_time, 
-                       image_file), "image_id") %>%
+                       date_time), "image_id") %>%
     
     mutate(highlighted = ifelse(good == TRUE, 1, 0)) %>%
     
     rename(deployment_id = id, 
-           location = image_file, 
            uncertainty = qc_certainty, 
            timestamp = date_time, 
            number_of_objects = count, 
@@ -221,9 +220,6 @@ fxn_create_metadata_image <- function(index_type){
            external_sequence_id = "None", 
            sequence_start_time = "None") %>%
     select(all_of(list_columns_image)) 
-  # %>%
-  #   select(-good, 
-  #          -column_n)
   
   return(image)
   
@@ -565,6 +561,11 @@ fxn_add_taxonomic_attributes <- function(index_data){
   
   output_data <- 
     index_data %>%
+    # Create binomial for non-animal photo_type 
+    # Blank, Unidentifiable, Maintenance
+    mutate(binomial = 
+             case_when(binomial == "N/A" ~ photo_type, 
+                       TRUE ~ binomial)) %>%
     left_join(wi_taxonomy, "binomial") 
   
   return(output_data)
@@ -594,4 +595,14 @@ fxn_create_identified_by <- function(index_data){
   
   return(output_data)
 }
+#   fxn_add_file_info ----
+fxn_add_file_info <- function(index_data){
+  add_file_info <- 
+    index_data %>%
+    mutate(image_file = paste0(image_id, ".JPG"), 
+           location = paste0("Pepperwood/Images/", id, "/", image_file))
+
+  return(add_file_info)
+}
+
 # ========================================================== -----

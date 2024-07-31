@@ -30,6 +30,22 @@ tidy_vault_long <-
   fxn_tidy_comments() %>%
   fxn_add_taxonomic_attributes() %>%
   fxn_create_identified_by()
+
+
+wi_taxonomy <- 
+  read_excel(here(path_in, "attributes_species_wi.xlsx"), 
+             sheet = "lookup_taxonomy") %>%
+  select(wi_taxon_id, binomial:common_name)
+
+tidy_vault_long %>%
+  distinct(action, photo_type, binomial) %>%
+  mutate(binomial = 
+           case_when(binomial == "N/A" ~ photo_type, 
+                     TRUE ~ binomial)) %>%
+  left_join(wi_taxonomy, "binomial") %>%
+  filter(is.na(wi_taxon_id))  
+
+
 #
 # nrow(binomial_count_long)
 # 1001047
