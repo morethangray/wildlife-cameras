@@ -1497,8 +1497,7 @@ fxn_tidy_for_qc <- function(index_site){
   fxn_define_camera_project(index_site)
   
   # Get file information for image tables, list files ----
-  dir_table <- fxn_dir_table_map(index_site, 
-                                 index_type = "catalog")  
+  dir_table <- fxn_dir_table_map(index_site, index_type = "catalog")  
   list_files <- unique(dir_table$file_name)
   
   # Iterate by image table  ----
@@ -1525,12 +1524,9 @@ fxn_tidy_for_qc <- function(index_site){
     
     # data_raw: Image table -----
     data_raw <-
-      fxn_table_read_xlsx(index_file = index_file, 
-                          index_type = "catalog")  %>%
-      mutate(image_id = str_remove(image_id, 
-                                   ".JPG"),
-             image_file = str_remove(image_file,
-                                     "IMG-")) %>%
+      fxn_table_read_xlsx(index_file = index_file, index_type = "catalog")  %>%
+      mutate(image_id = str_remove(image_id, ".JPG"),
+             image_file = str_remove(image_file, "IMG-")) %>%
       fxn_add_flags()
      
     # data_tidy: Tidy values for binomial and count  ----
@@ -1542,14 +1538,8 @@ fxn_tidy_for_qc <- function(index_site){
       # Revise any id with the old format 
       rename(id_init = id) %>%
       mutate(id = index_id) %>%
-      mutate(image_id = 
-               str_replace(image_id, 
-                           id_init, 
-                           id), 
-             image_file = 
-               str_replace(image_file, 
-                           id_init, 
-                           id)) %>%
+      mutate(image_id = str_replace(image_id, id_init, id), 
+             image_file = str_replace(image_file, id_init, id)) %>%
       select(-id_init)
     
     # subset_for_qc: Working subset for qc script ----
@@ -1582,59 +1572,43 @@ fxn_tidy_for_qc <- function(index_site){
       subset_for_qc <- 
         exclude_maintenance %>%
         # Rename blanks in binomial_1 for easier data handling
-        mutate(binomial_1 = ifelse(photo_type %in% "Blank", 
-                                   "Blank", binomial_1))  %>%
+        mutate(binomial_1 = ifelse(photo_type %in% "Blank", "Blank", binomial_1))  %>%
         # Create indexes for easier data handling (joins)
-        unite(id_image_n,
-              c(id,image_n), 
-              remove = FALSE) %>%
-        unite(id_photo_type,
-              c(id,photo_type),
-              remove = FALSE) %>%
+        unite(id_image_n, c(id,image_n), remove = FALSE) %>%
+        unite(id_photo_type, c(id,photo_type), remove = FALSE) %>%
         arrange(id, image_n)
       
       # Identify additional images for visual qc ----
       if(nrow(subset_for_qc) < 100){
-        
         flag_for_qc <- 
           subset_for_qc %>%
-          unite(id_image_n, 
-                c(id, image_n)) %>%
+          unite(id_image_n, c(id, image_n)) %>%
           select(id_image_n) %>%
           mutate(qc_image = TRUE)
       } else{
-        
         flag_for_qc <- 
           fxn_flag_for_qc(index_data = subset_for_qc) %>%
           select(id_image_n,
                  qc_image)
-        
       }
       
       # Revise the tidy table with images flagged for qc ----
       data_output <- 
         data_tidy %>%
-        unite(id_image_n,
-              c(id, 
-                image_n), 
-              remove = FALSE) %>%
-        left_join(flag_for_qc,
-                  "id_image_n")  %>%
+        unite(id_image_n, c(id, image_n), remove = FALSE) %>%
+        left_join(flag_for_qc, "id_image_n")  %>%
         
         # Update review column with new images flagged for QC
-        mutate(review = 
-                 case_when(
-                   qc_image == TRUE ~ TRUE, 
-                   TRUE ~ review), 
-               image_id = str_remove(image_id,
-                                     ".JPG")) %>%
+        mutate(review = case_when(qc_image == TRUE ~ TRUE, TRUE ~ review), 
+               # Remove duplicate strings in comments 
+               comments = sapply(comments, fxn_remove_dupe_comments),
+               image_id = str_remove(image_id, ".JPG")) %>%
         select(-qc_image, 
                -catalog_flag, 
                -id_image_n)  %>%
         select(all_of(list_column_names))
     }
-    
-    
+
     # Write as .xlsx ----
     fxn_xlsx_format(index_data = data_output, 
                     index_n = index_n,
@@ -2478,7 +2452,46 @@ fxn_drop_end_space <- function(index_data){
     mutate(comments = replace_quotes_with_NA(comments))
   
 }
+#   fxn_clean_text ----
+fxn_clean_text <- function(text) {
+  text %>%
+    str_remove_all("^\\s*;\\s*|\\s*;\\s*$") %>%
+    str_remove_all("^\\s*\\.\\s*|\\s*\\.\\s*$") %>%
+    str_remove_all("^\\s*,\\s*|\\s*,\\s*$") %>%
+    str_trim()
+}
 
+#   fxn_remove_dupe_comments ----
+# Remove duplicate text strings 
+# Must be used as: 
+#   mutate(comments = sapply(comments, fxn_remove_dupe_comments))
+
+fxn_remove_dupe_comments <- function(comment) {
+  
+  # Split the comment into individual strings
+  strings <- str_split(comment, ";\\s*")[[1]]
+  
+  # Remove duplicate strings  
+  unique_strings <- unique(strings)
+  
+  # Join the unique strings back together with "; " separator
+  collapse_unique <- paste(unique_strings, collapse = "; ")
+
+  # Remove multiple error messages 
+  error_count <- sum(str_count(unique_strings, "ERROR"))
+
+  if(error_count > 1 & !is.na(error_count)){
+    remove_dupes <- case_when(
+      str_count(collapse_unique, "ERROR") > 1 & 
+        str_detect(collapse_unique, "ERROR: error flagged by cataloger") ~ 
+        str_remove_all(unique_strings, "ERROR: error flagged by cataloger")
+    ) 
+    collapse_unique <- paste(remove_dupes, collapse = "; ")
+  } 
+
+  output_data <- fxn_clean_text(collapse_unique)
+  return(output_data)
+}
 
 #   fxn_fix_typos ----
 fxn_fix_typos <- function(index_data){
@@ -2531,32 +2544,32 @@ fxn_fix_typos <- function(index_data){
   
 }
 
+
 #   fxn_revise_qc_by_for_sentence_case ----
 fxn_revise_qc_by_for_sentence_case <- function(data){
-
-check_qc_by <- 
-  data %>%
-  drop_na(qc_by) %>%
-  mutate(nchar_qc_by = nchar(qc_by)) %>%
-  filter(nchar_qc_by == 2)
-
-if(nrow(check_qc_by) > 0){
   
-  updated_qc_by <- 
+  check_qc_by <- 
     data %>%
-    mutate(qc_initials_lower = str_to_lower(qc_by)) %>%
-    rename(qc_by_init = qc_by) %>%
-    left_join(lookup_qc_initials %>%
-                select(qc_by, qc_initials_lower), 
-              "qc_initials_lower") %>%
-    select(-qc_by_init, 
-           -qc_initials_lower)
+    drop_na(qc_by) %>%
+    mutate(nchar_qc_by = nchar(qc_by)) %>%
+    filter(nchar_qc_by == 2)
   
-  
-}else{
-  updated_qc_by <- data
-}
-return(updated_qc_by)
+  if(nrow(check_qc_by) > 0){
+    
+    updated_qc_by <- 
+      data %>%
+      mutate(qc_initials_lower = str_to_lower(qc_by)) %>%
+      rename(qc_by_init = qc_by) %>%
+      left_join(lookup_qc_initials %>%
+                  select(qc_by, qc_initials_lower), "qc_initials_lower") %>%
+      select(-qc_by_init, 
+             -qc_initials_lower)
+    
+    
+  }else{
+    updated_qc_by <- data
+  }
+  return(updated_qc_by)
 }
 # ---------------------------------------------------------- -----
 # _TIDY ----
@@ -2810,272 +2823,260 @@ fxn_tidy_binomial_count <- function(index_data,
 #   Messes up the counts for the two photo_types 
 #   For now: identify more images than needed, then reduce to 10% 
 #   Step 4 does the "identify more images" work
-#   fxn_target_10 ----
-# STEP 1 | Calculate 10% target by id_photo_type 
-# Need to get targets for two photo_types in every id: blank, animal
-# Hard coded for a run length of 5 images 
-fxn_target_10 <- function(index_data){
-  
-  index_run_length <- 5
-  
-  calculate_target <- 
-    index_data %>%
-    group_by(id, 
-             photo_type, 
-             id_photo_type) %>%
-    summarize(img_total = n()) %>%
-    mutate(img_target_10 = 
-             ceiling(img_total * 0.1),
-           # Add buffer to run count; runs not always 5 images 
-           run_target_13 = 
-             ceiling(img_total * 0.13/index_run_length)) %>%
-    select(id_photo_type, 
-           img_target_10,
-           run_target_13) %>%
-    ungroup() 
-}
-#   fxn_sample_run_transition  ----
-# STEP 2 | Add QC flags at transition between image runs 
-# Exclude images that have already been flagged 
-# Then flag 10% images that are blank or have common species 
-# index_data <- subset_for_qc
-# index_lookup <- lookup_target_10
-# index_run_length <- n_images_in_run
-fxn_sample_run_transition <- function(index_data, 
-                                      index_lookup){
-  
-  index_run_length <- 5
-  
-  subset <-
-    index_data %>%
-    select(id, 
-           photo_type, 
-           binomial_1, 
-           image_n, 
-           starts_with("id")) %>%
-    # Create column to hold cumulative run length
-    mutate(run_length = NA)
-  
-  lookup <- 
-    index_lookup %>%
-    select(id_photo_type, 
-           img_target_10, 
-           run_target_13)
-  
-  # 1. Determine run lengths for repeated images  ----
-  run_length <- rle(subset$binomial_1)$lengths
-  # Append to subset 
-  subset$run_length[cumsum(run_length)] <- run_length
-  
-  # 2. Create a lookup table of image runs ----
-  # The resulting table captures the range of each image run
-  # This will be used to create the list of image_n
-  run_intervals <- 
-    subset %>%
-    # Remove id_image_n because range of images will map to same image_from 
-    rename(image_to = image_n) %>%
-    # Subset to runs of at least 5 images
-    filter(run_length >= index_run_length) %>%
-    group_by(id_photo_type) %>%
-    # Create image_from by subtracting (run_length + 1) from image_to
-    mutate(image_from = image_to - run_length + 1, 
-           run_n = 1:n()) %>%
-    ungroup() %>%
-    # Prioritize long runs 
-    arrange(id_photo_type, 
-            desc(run_length)) %>%
-    group_by(id_photo_type) %>%
-    mutate(run_priority = 1:n()) %>%
-    ungroup() %>%
-    # Add the 10% target for image count
-    left_join(lookup, "id_photo_type") %>%
-    unite(id_photo_type_n, c(id_photo_type, run_n), remove = FALSE) %>%
-    # Identify runs to include, with priority given to longest runs
-    mutate(include_run = ifelse(run_priority <= run_target_13,
-                                TRUE, FALSE)) %>%
-    select(id, 
-           photo_type, 
-           binomial_1, 
-           image_from, 
-           image_to, 
-           img_target_10, 
-           include_run, 
-           starts_with("id"))
-  
-  # 3. Convert run range to image_n sequence -----
-  # Subset to the target number of runs and map image interval  
-  image_sequence <- 
-    run_intervals %>%
-    filter(include_run == TRUE) %>%
-    # Convert range to list of images 
-    mutate(t_lag0 = image_from, 
-           t_lag2 = t_lag0 -2, 
-           t_lag1 = t_lag0 -1, 
-           t_lead1 = t_lag0 + 1, 
-           t_lead2 = t_lag0 +2) %>%
-    gather(lag, image_n, c(t_lag0:t_lead2)) %>%
-    arrange(id, photo_type, image_n) %>%
-    # Add a QC flag 
-    mutate(qc_image = TRUE) %>%
-    # Create an index to join lookup table
-    unite(id_image_n, c(id, image_n)) %>%
-    select(id_image_n,
-           # image_from,
-           # image_to,
-           img_target_10,
-           qc_image, 
-           id_photo_type_n) %>%
-    # Join original image table to get all images 
-    right_join(subset %>%
-                 select(-run_length), "id_image_n") 
-  
-}
-#   fxn_sample_check  ---- 
-# STEP 3 | Compare image count, 10% target  
-# Subset to surveys that need more images flagged for QC
-# Also used for Step 5 to check revised image sequence
-fxn_sample_check <- function(index_data, index_lookup){
-  
-  check <- 
-    index_data %>%
-    filter(qc_image == TRUE) %>%
-    group_by(id_photo_type) %>%
-    # Calculate the number of image flagged for QC 
-    summarize(img_have = n()) %>%
-    # Append target numbers
-    left_join(index_lookup, "id_photo_type") %>%
-    mutate(img_need = img_target_10 - img_have, 
-           img_need = ifelse(img_need >0, img_need, 0)) %>%
-    filter(img_need > 0)
-}
-#   fxn_sample_additional_images  ---- 
-# STEP 4 | Sample available images to reach 10% target 
-# index_lookup <- lookup_need_additional_images
-# index_data <- run_image_sequence_all
-# index_id <- list_id[3]
-# index_id_photo_type <- list_id_photo_type[2]
-
-fxn_sample_additional_images <- function(index_data, index_lookup){
-  
-  list_id_photo_type <- unique(index_lookup$id_photo_type)
-  # First: Address surveys that need more images ----
-  datalist <- list()
-  
-  for(index_id_photo_type in list_id_photo_type){
-    
-    # Create data subsets ----
-    subset <-
-      index_data %>%
-      filter(id_photo_type %in% index_id_photo_type)
-    # # Subset to images not yet flagged for QC
-    # is.na(qc_image))
-    
-    # Images flagged for QC
-    subset_qc <- 
-      subset %>%
-      filter(qc_image == TRUE)
-    
-    # Images not flagged for QC
-    subset_na <- 
-      subset %>%
-      filter(is.na(qc_image)) %>%
-      select(-qc_image)
-    
-    # Identify additional images for QC ----
-    # List the available images 
-    list_available_images <- unique(subset_na$image_n)
-    
-    # Get the count of needed images to reach 10% target
-    n_images <- 
-      index_lookup %>%
-      filter(id_photo_type %in% index_id_photo_type) %>%
-      pull(img_need)
-    
-    # Set the seed for reproducible sampling
-    set.seed(143)
-    
-    # Sample the available images 
-    selected_images <- 
-      tibble(image_n = sample(x = list_available_images, size = n_images), 
-             qc_image_rev = TRUE) %>%
-      mutate(id = str_sub(index_id_photo_type, 1, 11)) %>%
-      arrange(id, image_n) %>%
-      unite(id_image_n, c(id, image_n)) 
-    
-    # Revise data table ---- 
-    datalist[[index_id_photo_type]] <- 
-      # Start with the images not flagged for QC
-      subset_na %>%
-      # Join new images for QC
-      left_join(selected_images, "id_image_n") %>%
-      # Bind images already flagged for QC
-      bind_rows(subset_qc) %>%
-      # Combine original and revised columns for the qc flag
-      unite(qc_image, c(qc_image, qc_image_rev), na.rm = TRUE) %>%
-      mutate(qc_image = as.logical(qc_image)) %>%
-      select(id_image_n, 
-             id, 
-             photo_type, 
-             binomial_1, 
-             image_n, 
-             qc_image)
-    
-  }
-  
-  bind_datalist <- do.call(bind_rows, datalist)
-  
-  # Second: Bind the revised and unchanged survey tables ----
-  revised_data <- 
-    index_data %>%
-    # Exclude surveys that were revised
-    filter(id_photo_type %nin% list_id_photo_type) %>%
-    # Add the revised surveys
-    bind_rows(bind_datalist)  
-  
-}
-
-# Combine all subsetting functions ----
 #   fxn_flag_for_qc ----
 # Hard coded for a run length of 5 images 
-# index_data <- subset_for_qc
 fxn_flag_for_qc <- function(index_data){
   
   index_run_length <- 5
   
   # Step 1: Calculate 10% targets by id_photo_type ----
+  #   Define fxn_target_10 ----
   # Need to get targets for two photo_types in every id: blank, animal
+  # Hard coded for a run length of 5 images 
+  fxn_target_10 <- function(index_data){
+    
+    index_run_length <- 5
+    
+    calculate_target <- 
+      index_data %>%
+      group_by(id, 
+               photo_type, 
+               id_photo_type) %>%
+      summarize(img_total = n()) %>%
+      mutate(img_target_10 = ceiling(img_total * 0.1),
+             # Add buffer to run count; runs not always 5 images 
+             run_target_13 = ceiling(img_total * 0.13/index_run_length)) %>%
+      select(id_photo_type, 
+             img_target_10,
+             run_target_13) %>%
+      ungroup() 
+  }
+  #
+  #   Get target counts for blank, animal ----
   lookup_target_10 <- fxn_target_10(index_data = index_data)
-  
+  #
   # Step 2: Add QC flags at transition between image runs ----
+  #   Define fxn_sample_run_transition ----
+  # Exclude images that have already been flagged 
+  # Then flag 10% images that are blank or have common species 
+  fxn_sample_run_transition <- function(index_data, index_lookup){
+    
+    index_run_length <- 5
+    
+    subset <-
+      index_data %>%
+      select(id, 
+             photo_type, 
+             binomial_1, 
+             image_n, 
+             starts_with("id")) %>%
+      # Create column to hold cumulative run length
+      mutate(run_length = NA)
+    
+    lookup <- 
+      index_lookup %>%
+      select(id_photo_type, 
+             img_target_10, 
+             run_target_13)
+    
+    # 1. Determine run lengths for repeated images  ----
+    run_length <- rle(subset$binomial_1)$lengths
+    # Append to subset 
+    subset$run_length[cumsum(run_length)] <- run_length
+    
+    # 2. Create a lookup table of image runs ----
+    # The resulting table captures the range of each image run
+    # This will be used to create the list of image_n
+    run_intervals <- 
+      subset %>%
+      # Remove id_image_n because range of images will map to same image_from 
+      rename(image_to = image_n) %>%
+      # Subset to runs of at least 5 images
+      filter(run_length >= index_run_length) %>%
+      group_by(id_photo_type) %>%
+      # Create image_from by subtracting (run_length + 1) from image_to
+      mutate(image_from = image_to - run_length + 1, 
+             run_n = 1:n()) %>%
+      ungroup() %>%
+      # Prioritize long runs 
+      arrange(id_photo_type, 
+              desc(run_length)) %>%
+      group_by(id_photo_type) %>%
+      mutate(run_priority = 1:n()) %>%
+      ungroup() %>%
+      # Add the 10% target for image count
+      left_join(lookup, "id_photo_type") %>%
+      unite(id_photo_type_n, c(id_photo_type, run_n), remove = FALSE) %>%
+      # Identify runs to include, with priority given to longest runs
+      mutate(include_run = ifelse(run_priority <= run_target_13,
+                                  TRUE, FALSE)) %>%
+      select(id, 
+             photo_type, 
+             binomial_1, 
+             image_from, 
+             image_to, 
+             img_target_10, 
+             include_run, 
+             starts_with("id"))
+    
+    # 3. Convert run range to image_n sequence -----
+    # Subset to the target number of runs and map image interval  
+    image_sequence <- 
+      run_intervals %>%
+      filter(include_run == TRUE) %>%
+      # Convert range to list of images 
+      mutate(t_lag0 = image_from, 
+             t_lag2 = t_lag0 -2, 
+             t_lag1 = t_lag0 -1, 
+             t_lead1 = t_lag0 + 1, 
+             t_lead2 = t_lag0 +2) %>%
+      gather(lag, image_n, c(t_lag0:t_lead2)) %>%
+      arrange(id, photo_type, image_n) %>%
+      # Add a QC flag 
+      mutate(qc_image = TRUE) %>%
+      # Create an index to join lookup table
+      unite(id_image_n, c(id, image_n)) %>%
+      select(id_image_n,
+             img_target_10,
+             qc_image, 
+             id_photo_type_n) %>%
+      # Join original image table to get all images 
+      right_join(subset %>%
+                   select(-run_length), "id_image_n") 
+    
+  }
+  # 
+  #   Apply flags to images for QC ----
   images_at_transition <- 
     fxn_sample_run_transition(index_data = index_data,
                               index_lookup = lookup_target_10)
-  
+  #
   # Step 3: Compare image count and 10% targets ----
-  # If enough images are flagged, skip step 4 
+  #   Define fxn_sample_check ----
+  # Subset to surveys that need more images flagged for QC
+  # Also used for Step 3.2 to check revised image sequence
+  fxn_sample_check <- function(index_data, index_lookup){
+    
+    check <- 
+      index_data %>%
+      filter(qc_image == TRUE) %>%
+      group_by(id_photo_type) %>%
+      # Calculate the number of image flagged for QC 
+      summarize(img_have = n()) %>%
+      # Append target numbers
+      left_join(index_lookup, "id_photo_type") %>%
+      mutate(img_need = img_target_10 - img_have, 
+             img_need = ifelse(img_need >0, img_need, 0)) %>%
+      filter(img_need > 0)
+  }
+  #
+  #   Evaluate whether the image target count is met  ----
   lookup_additional_images <- 
     fxn_sample_check(index_data = images_at_transition, 
                      index_lookup = lookup_target_10)
-  
+  #
   check_additional <- nrow(lookup_additional_images) 
-  if(check_additional == 0){
-    images_flagged <- images_at_transition
-  }
+  #
+  # If enough images are flagged: STOP  ----
+  if(check_additional == 0){images_flagged <- images_at_transition}
+  #
+  # If insufficient images are flagged: SAMPLE MORE IMAGES  ----
+  #   Define fxn_sample_additional_images  ---- 
+    # Not used if enough images are flagged after using fxn_sample_check
+    # For step 3.1 
+    fxn_sample_additional_images <- function(index_data, index_lookup){
+      
+      list_id_photo_type <- unique(index_lookup$id_photo_type)
+      
+      # First: Address surveys that need more images ----
+      datalist <- list()
+      
+      for(index_id_photo_type in list_id_photo_type){
+        
+        # Create data subsets ----
+        subset <-
+          index_data %>%
+          filter(id_photo_type %in% index_id_photo_type)
+        
+        # Images flagged for QC
+        subset_qc <- 
+          subset %>%
+          filter(qc_image == TRUE)
+        
+        # Images not flagged for QC
+        subset_na <- 
+          subset %>%
+          filter(is.na(qc_image)) %>%
+          select(-qc_image)
+        
+        # Identify additional images for QC ----
+        # List the available images 
+        list_available_images <- unique(subset_na$image_n)
+        
+        # Get the count of needed images to reach 10% target
+        n_images <- 
+          index_lookup %>%
+          filter(id_photo_type %in% index_id_photo_type) %>%
+          pull(img_need)
+        
+        # Set the seed for reproducible sampling
+        set.seed(143)
+        
+        # Sample the available images 
+        selected_images <- 
+          tibble(image_n = sample(x = list_available_images, size = n_images), 
+                 qc_image_rev = TRUE) %>%
+          mutate(id = str_sub(index_id_photo_type, 1, 11)) %>%
+          arrange(id, image_n) %>%
+          unite(id_image_n, c(id, image_n)) 
+        
+        # Revise data table ---- 
+        datalist[[index_id_photo_type]] <- 
+          # Start with the images not flagged for QC
+          subset_na %>%
+          # Join new images for QC
+          left_join(selected_images, "id_image_n") %>%
+          # Bind images already flagged for QC
+          bind_rows(subset_qc) %>%
+          # Combine original and revised columns for the qc flag
+          unite(qc_image, c(qc_image, qc_image_rev), na.rm = TRUE) %>%
+          mutate(qc_image = as.logical(qc_image)) %>%
+          select(id_image_n, 
+                 id, 
+                 photo_type, 
+                 binomial_1, 
+                 image_n, 
+                 qc_image)
+        
+      }
+      
+      bind_datalist <- do.call(bind_rows, datalist)
+      
+      # Second: Bind the revised and unchanged survey tables ----
+      revised_data <- 
+        index_data %>%
+        # Exclude surveys that were revised
+        filter(id_photo_type %nin% list_id_photo_type) %>%
+        # Add the revised surveys
+        bind_rows(bind_datalist)  
+    }
+  #   Identify additional images for QC  ---- 
   if(check_additional > 0){
-    # Step 4: Sample available images to reach 10% target ----
+
+    # Step 3.1: Sample available images to reach 10% target ----
     images_after_revision <-
       fxn_sample_additional_images(
         index_data = images_at_transition, 
         index_lookup = lookup_additional_images)
     
-    # Step 5: Compare image count and 10% targets ----
+    # Step 3.2: Compare image count and 10% targets ----
     final_sample_check <- 
       fxn_sample_check(index_data = images_after_revision, 
                        index_lookup = lookup_target_10)
     
     check_revision <- nrow(final_sample_check)
     
-    # Step 6: Confirm checks and finalize image table ----
+    # Step 3.3: Confirm checks and finalize image table ----
     if(check_revision == 0){
       images_flagged <- images_after_revision
     }
@@ -3114,6 +3115,110 @@ list_hide_images_tidy_3 <-
 
 # ---------------------------------------------------------- -----
 # _CLEAN ----
+#   fxn_tidy_comments_after_qc ----
+fxn_tidy_comments_after_qc <- function(index_data){
+  
+  # #   Function to conditionally replace "Unidentifiable bird" ----
+  # replace_unidentified_bird <- function(binomial, comments) {
+  #   
+  #   ifelse(binomial == "Bird species", str_replace_all(comments, "Unidentifiable bird", ""), comments)
+  # }
+  
+  #   Function to replace comment patterns ----
+  fxn_replace_comment_patterns <- function(comments) {
+    
+    # Define a named vector with patterns and their replacements ----
+    replacements <- c(
+      "review\\." = "review;",
+      "missing\\." = "missing;",
+      "CONFIRM ID: special species\\." = "CONFIRM ID: special species;",
+      "CONFIRM ID: unidentifiable animal\\." = "CONFIRM ID: unidentifiable animal;",
+      "CONFIRM COUNT: blank with count\\." = "CONFIRM COUNT: blank with count;",
+      "ADD COUNT: animal missing; count" = "ADD COUNT: animal missing count",
+      "EXCLUDE IMAGE: error flagged by cataloger" = "", 
+      "ADD COUNT: animal missing count" = "",
+      "ERROR: error flagged by cataloger; Do not catalog" = "Do not catalog",
+      "ERROR: error flagged by cataloger; ; Do not catalog:" = "Do not catalog:", 
+      "Camera knocked down; Camera knocked down" = "Camera knocked down; ",
+      "Camera knocked down; Camera Knocked Down" = "Camera knocked down",
+      "Camera knocked down; Camera knocked over" = "Camera knocked down; ", 
+      "Camera knocked down; Camera down" = "Camera knocked down; ", 
+      "; ," = ";"
+    )
+    
+    str_replace_all(comments, replacements)
+  }
+  
+  #   Function to remove error messages ----
+  # index_errors = error_messages
+  fxn_remove_error_message <- function(index_data) {
+    
+    # Define error messages ----
+    list_qc_error <- 
+      read_excel(here(path_in, 
+                      "binomial-crosswalk.xlsx"), 
+                 sheet = "error-messages") %>%
+      select(error_type,
+             error_message)  %>%
+      filter(str_detect(error_message, "ADD|CONFIRM|FIX|NEEDS")) %>%
+      pull(error_message)
+    
+    # Remove duplicate text strings  ----
+    fxn_clean_comment <- function(comment) {
+      # Split the comment into individual strings
+      strings <- str_split(comment, ";\\s*")[[1]]
+      # Remove duplicate strings  
+      unique_strings <- unique(strings)
+      # Remove QC error messages
+      filtered_strings <- setdiff(unique_strings, list_qc_error)
+      # Join the unique strings back together with "; " separator
+      paste(filtered_strings, collapse = "; ")
+    }
+    
+    # # Remove leading, trailing space and ; ----
+    # DEFINED OUTSIDE THIS FUNCTION
+    # fxn_clean_text <- function(text) {
+    #   text %>%
+    #     str_remove_all("^\\s*;\\s*|\\s*;\\s*$") %>%
+    #     str_remove_all("^\\s*\\.\\s*|\\s*\\.\\s*$") %>%
+    #     str_remove_all("^\\s*,\\s*|\\s*,\\s*$") %>%
+    #     str_trim()
+    # }
+    
+    # Create lookup table of clean comments ----
+    output_table <-
+      index_data %>%
+      mutate(comments = sapply(comments, fxn_clean_comment)) %>%
+      mutate(comments = sapply(comments, fxn_clean_text),
+             comments = str_trim(comments)) 
+    
+    return(output_table)
+    
+  }
+  
+  #   Create tidy comments ----
+  lookup_comments <-
+    index_data %>%
+    drop_na(comments) %>%
+    # distinct(binomial, comments) %>%
+    distinct(comments) %>%
+    mutate(comments_orig = comments) %>%
+    mutate(comments = fxn_replace_comment_patterns(comments)) %>%
+    fxn_remove_error_message() %>%
+    # select(-binomial) %>%
+    distinct()
+  
+  output_data <- 
+    index_data  %>%
+    rename(comments_orig = comments) %>%
+    left_join(lookup_comments, "comments_orig") %>%
+    select(-comments_orig) %>%
+    # mutate(comments = replace_unidentified_bird(binomial, comments)) %>%
+    distinct()
+  
+  return(output_data)
+  
+}
 # Revise id fields: image_id, image_file ----
 # ========================================================== -----
 
