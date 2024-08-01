@@ -100,39 +100,63 @@ fxn_dlog_ilog_compare <- function(index_site){
   }
 }
 #   fxn_dir_jpg_find_new ----
-fxn_dir_jpg_find_new <- function(index_site, 
-                                 index_year){
+fxn_dir_jpg_find_new <- function(index_site, index_year){
   
   fxn_define_camera_project(index_site)
   
-  tbl_new <- 
-    fxn_dir_jpg_map(index_site = index_site, 
-                    index_year = index_year) %>%
+  tbl_init <- 
+    fxn_dir_jpg_map(index_site = index_site, index_year = index_year) %>%
     # Filter to id not in dlog
     filter(err_id == TRUE) %>%
-    remove_empty("cols")
+    remove_empty("cols") 
   
-  if(nrow(tbl_new) == 0){
-    message(paste0("No new image folders found for ",
-                   index_site, "_", index_year))
+  # Get end date of prior survey from dlog ----
+  # Define function
+  # index_data = tbl_init
+  fxn_get_last_date_from <- function(index_data){
     
+    # Modify new_surveys to be tbl_init 
+    new_surveys <- 
+      index_data %>%
+      select(id) %>%
+      mutate(date = paste0("20", str_sub(id, 6, 11)), 
+             date_to = ymd(date), 
+             camera = str_sub(id, 1, 4))
+    
+    previous_surveys <- 
+      dlog %>% 
+      filter(use_data != "UNK") %>%
+      group_by(camera) %>%
+      summarize(date_max = max(date_to, na.rm = TRUE)) 
+    
+    with_date_from <- 
+      new_surveys %>%
+      left_join(previous_surveys, "camera") %>%
+      mutate(date_from = case_when(date_max < date_to ~ date_max, TRUE ~ NA_Date_), 
+            year_to = year(date_to)) %>%
+      select(id, camera, year_to, date_from, date_to)
+    
+    return(with_date_from)
+  }
+  
+  # Revise table of new folders with potential dates ----
+  tbl_new <- fxn_get_last_date_from(tbl_init) %>%
+    left_join(tbl_init, "id")
+  
+  # Report outcome of this check for new folders ----
+  if(nrow(tbl_new) == 0){
+    message(paste0("No new image folders found for ", index_site, "_", index_year))
     
   }else{
     n_new <- length(unique(tbl_new$id))
-    message(paste0("Revise deployment log: ", 
-                   n_new, 
+    message(paste0("Revise deployment log: ", n_new, 
                    " new image folders found for ",
                    index_site, "_", index_year))
     print(tbl_new)
     
     index_file_name <- paste0(index_site, "_folder-names_init.csv")
-    
     fxn_archive_old_csv(index_file_name = index_file_name)
-    
-    write_csv(tbl_new,
-              here(path_out,
-                   index_file_name), 
-              na = "")
+    write_csv(tbl_new,  here(path_out, index_file_name), na = "")
   }
   
 }
