@@ -95,23 +95,24 @@ fxn_write_metadata_csv(index_type = "test")
 #
 # ========================================================== -----
 # To do ----
-# Add 13 deployments after QC ----
+# [ ] Add 13 deployments after QC ----
 # Need image tables
 # "P_A1_210226" "P_A1_210607" "P_A2_201207" "P_A2_210308" 
 # "P_A2_210719" "P_A2_210830" "P_A4_201013" "P_A4_211129" 
 # "P_C3_210121"  "P_C5_210312" "P_D3_210122" "P_D3_210720" 
 # "P_E4_210720"
 
-# Address missing timestamps ----
+# [ ] Address missing timestamps ----
 # delete images and rows?
-# 1 P_A1_200610_00011
-# 2 P_C2_200902_00156
-# 3 P_C4_200611_01421
-# 4 P_C4_200611_02372
-# 5 P_D2_201014_01528
-# 6 P_E4_200903_04946
-# Add 62 missing camera_id to camera ----
-# Add 62 missing camera_id to deployment ----
+# [x] P_A1_200610_00011
+# [ ] P_C2_200902_00156
+# [ ] P_C4_200611_01421
+# [ ] P_C4_200611_02372
+# [ ] P_D2_201014_01528
+# [ ] P_E4_200903_04946
+# [ ] Add 62 missing camera_id to camera ----
+# [ ] Add 62 missing camera_id to deployment ----
+# ---------------------------------------------------------- -----
 # [x] Correct image$location ----
 # add drive and folders
 # ========================================================== -----
