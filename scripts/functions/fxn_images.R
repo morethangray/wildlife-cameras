@@ -290,173 +290,131 @@ fxn_jpg_check_dates <- function(index_exif){
   return(check_dates)
   
 }
-#   fxn_jpg_rename_01 ----
-fxn_jpg_rename_01 <- function(index_exif, paren_n){
-  
-  if(paren_n == 0){
-    add_image_n <-
-      index_exif %>%
-      arrange(id, date_time) %>%
-      mutate(image_n = 1:n())
-  }
-  if(paren_n == 1){
-    add_image_n <- 
-      index_exif %>%
-      # Create image_n from the number in parentheses
-      mutate(
-        image_n = as.numeric(
-          str_extract(file_name,
-                      "(?<=\\()\\d+(?=\\))")))
-  }
-  # Revise exif table with image_n ----
-  revised_exif <-
-    add_image_n %>%
-    rename(file_name_init = file_name, 
-           path_init = path_file) %>%
-    mutate(image_n_pad = str_pad(image_n,
-                                 width = 5,
-                                 pad = "0",
-                                 side = "left"),
-           image_n_jpg = paste0("_",
-                                image_n_pad,
-                                ".JPG"),
-           file_name = paste0(id,
-                              image_n_jpg),
-           path_file = paste(path_dir,
-                            file_name,
-                            sep = "/"),
-           image_id = str_remove(file_name,
-                                 ".JPG"), 
-           file_name_temp = paste0("temp_", file_name), 
-           path_temp = paste(path_dir, 
-                             file_name_temp, 
-                             sep = "/")) %>%
-    select(id,
-           image_id,
-           camera,
-           file_name,
-           date_time,
-           date,
-           time,
-           image_n,
-           camera_make,
-           camera_model,
-           focal_length,
-           image_width,
-           image_height,
-           file_size, 
-           file_name_init, 
-           file_name_temp,
-           path_init,
-           path_temp, 
-           path_file,
-           path_dir)
-  
-  return(revised_exif)
-}
-
-#   fxn_jpg_rename_exif_01 ----
+#   fxn_jpg_rename_exif ----
 # Add image_n to file_name using date_time order 
-# paren_n = 1
-fxn_jpg_rename_exif_01 <- function(index_site, index_year){
-  
-  # Note: Site and year defined in fxn_jpg_map_files
-  # Map all images ----
-  jpg_init <- 
-    fxn_jpg_map_files(index_site, 
-                      index_year,
-                      done_rename = FALSE) 
-  
-  # unique(jpg_init$id)
-  # Check for files to process ----
-  if(nrow(jpg_init) == 0) stop("No files process")
+# Uses regex to replace "2019:01:01" with "2019-01-01"
 
-  #   Iterate by deployment ----
-  # Identify the deployments to renumber 
+fxn_jpg_rename_exif <- function(index_site, index_year){
+  
+  # Map all images 
+  jpg_init <- fxn_jpg_map_files(index_site, index_year, done_rename = FALSE) 
+  
+  # Check for files to process 
+  if(nrow(jpg_init) == 0) stop("No files to process")
+  
+  # Iterate by deployment 
   index_list <- unique(jpg_init$id)
   
-  # index_id = index_list[1]
   for(index_id in index_list){
     
-    # Create helpers ----
-    cat(index_id, "\n", " checking exif info", "\n")
+    # Create helpers
+    cat(index_id, "\nChecking EXIF info\n")
     
-    index_path_jpg <-
-      jpg_init %>%
+    index_path_jpg <- jpg_init %>%
       filter(id %in% index_id) %>%
       pull(path)
     
-    # Read exif info and sort by date  ----
-    exif_info <-
-      fxn_exif_read(index_path_jpg = index_path_jpg, 
-                    index_id = index_id) %>%
+    # Read EXIF info and sort by date 
+    exif_info <- fxn_exif_read(index_path_jpg = index_path_jpg, 
+                               index_id = index_id) %>%
       arrange(id, date_time) 
     
-    # Check date_to and date_from  ----
-    check_dates <- fxn_jpg_check_dates(index_exif = exif_info)
-    
-    # Break loop if there are date errors ----
-    if(nrow(check_dates) > 0){
-      message(paste0("Image date(s) outside survey period: ", 
-                     index_id))
+        # Check image dates
+    if (nrow(fxn_jpg_check_dates(exif_info)) > 0) {
+      message(paste0("Image date(s) outside survey period: ", index_id))
       break
-    }else{
-      cat("  dates ok", "\n")
+    } else {
+      cat("Dates OK\n")
     }
-    # Check file size  ----
-    check_size <- 
-      exif_info %>%
-      filter(file_size == 0) 
-    
-    # Break loop if there are file size errors ----
-    if(nrow(check_size) > 0){
-      cat(" ...", nrow(check_size), "files with size 0", "\n")
+
+    # Check file size
+    if (nrow(exif_info %>% filter(file_size == 0)) > 0) {
+      cat("Files with size 0\n")
       break
-    }else{
-      cat("  file size ok", "\n")
+    } else {
+      cat("File size OK\n")
     }
     
-    # If no date or size errors: Revise image_n, write exif ----
-    if(nrow(check_dates) == 0 & nrow(check_size) == 0){
+    # Rename image files if no errors
+    fxn_jpg_rename <- function(index_exif, paren_n){
       
-      # Create new image numbers  
-      add_image_n <- fxn_jpg_rename_01(index_exif = exif_info, 
-                                       paren_n = 0)
-    
-      # Rename image files with temp_ prefix
-      #  Prevents overwriting duplicate image names
-      #  Important when "(2)" suffix mixed in on some images 
-      add_image_n %>%
-        select(path_from = path_init, 
-               path_to = path_temp) %>%
-        fxn_wrap_file_rename()
+      if(paren_n == 0){
+        add_image_n <- index_exif %>%
+          arrange(id, date_time) %>%
+          mutate(image_n = 1:n())
+      }
+      if(paren_n == 1){
+        add_image_n <- index_exif %>%
+          # Create image_n from the number in parentheses
+          mutate(image_n = as.numeric(str_extract(file_name, "(?<=\\()\\d+(?=\\))")))
+      }
       
-      # Rename image files 
-      add_image_n %>%
-        select(path_from = path_temp, 
-               path_to = path_file) %>%
-        fxn_wrap_file_rename()
+      # Revise exif table with image_n  
+      revised_exif <- 
+        add_image_n %>%
+        rename(file_name_init = file_name, 
+               path_init = path_file) %>%
+        mutate(image_n_pad = str_pad(image_n, width = 5, pad = "0", side = "left"),
+               image_n_jpg = paste0("_", image_n_pad, ".JPG"),
+               file_name = paste0(id, image_n_jpg),
+               path_file = paste(path_dir, file_name,  sep = "/"),
+               # path_file = file.path(path_dir, file_name),
+               image_id = str_remove(file_name, ".JPG"), 
+               file_name_temp = paste0("temp_", file_name), 
+               # path_temp = file.path(path_dir, file_name_temp)) %>%
+               path_temp = paste(path_dir, file_name_temp, sep = "/")) %>%
+        select(id,
+               image_id,
+               camera,
+               file_name,
+               date_time,
+               date,
+               time,
+               image_n,
+               camera_make,
+               camera_model,
+               focal_length,
+               image_width,
+               image_height,
+               file_size, 
+               file_name_init, 
+               file_name_temp,
+               path_init,
+               path_temp, 
+               path_file,
+               path_dir)
       
-      cat("  renamed files", "\n")
-      
-      # Write exif table 
-      add_image_n %>%
-        select(-path_init,
-               -path_temp, 
-               -file_name_init, 
-               -file_name_temp) %>%
-        write_csv(here(path_exif,
-                       paste0(index_id, "_exif.csv")),
-                  na = "")
-      
-      cat("  created _exif.xlsx", "\n")
-      
-      
+      return(revised_exif)
     }
+    
+    #  Create new image numbers 
+    add_image_n <- fxn_jpg_rename(exif_info, 0)
+    
+    # First: Rename image files with temp_ prefix 
+    #  Prevents overwriting duplicate image names
+    #  Important when "(2)" suffix mixed in on some images 
+    add_image_n %>%
+      select(path_from = path_init, path_to = path_temp) %>%
+      fxn_wrap_file_rename()
+    
+    # Second: Rename temp image files with final name
+    add_image_n %>%
+      select(path_from = path_temp, path_to = path_file) %>%
+      fxn_wrap_file_rename()
+    
+    cat("Renamed files\n")
+    
+    # Write exif table  ----
+    add_image_n %>%
+      select(-path_init,
+             -path_temp, 
+             -file_name_init, 
+             -file_name_temp) %>%
+      write_csv(here(path_exif, paste0(index_id, "_exif.csv")), na = "")
+    
+    cat("Created _exif.csv\n")
   }
 }
-
-
 #   fxn_jpg_check_rename  ----
 fxn_jpg_check_rename <- function(index_site, index_year){
   
