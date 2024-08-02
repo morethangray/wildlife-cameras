@@ -138,16 +138,16 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     
     return(with_date_from)
   }
-  
-  # Revise table of new folders with potential dates ----
-  tbl_new <- fxn_get_last_date_from(tbl_init) %>%
-    left_join(tbl_init, "id")
-  
+ 
   # Report outcome of this check for new folders ----
-  if(nrow(tbl_new) == 0){
+  if(nrow(tbl_init) == 0){
     message(paste0("No new image folders found for ", index_site, "_", index_year))
     
   }else{
+    # Revise table of new folders with potential dates 
+    tbl_new <- fxn_get_last_date_from(tbl_init) %>%
+      left_join(tbl_init, "id")
+    
     n_new <- length(unique(tbl_new$id))
     message(paste0("Revise deployment log: ", n_new, 
                    " new image folders found for ",
@@ -158,7 +158,6 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     fxn_archive_old_csv(index_file_name = index_file_name)
     write_csv(tbl_new,  here(path_out, index_file_name), na = "")
   }
-  
 }
 
 #   fxn_table_find_new ----
