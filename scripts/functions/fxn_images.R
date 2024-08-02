@@ -54,13 +54,10 @@ fxn_jpg_map_files <- function(index_site,
     index_camera <- unique(lookup$camera)
     
     datalist[[index_id]] <- 
-      tibble(path = 
-               dir_ls(path = index_path,
-                      recurse = TRUE, 
-                      type = "file")) %>%
-      
+      tibble(path = dir_ls(path = index_path,
+                           recurse = TRUE, 
+                           type = "file")) %>%
       filter(str_detect(path, "archive") == FALSE) %>%
-      
       mutate(id = index_id, 
              camera = index_camera,
              file_name = path_file(path), 
@@ -81,14 +78,9 @@ fxn_jpg_map_files <- function(index_site,
 }
 
 #   fxn_jpg_summary ---- 
-# done_rename = FALSE
-fxn_jpg_summary <- function(index_site,
-                            index_year, 
-                            done_rename){
+fxn_jpg_summary <- function(index_site, index_year, done_rename){
   
-  index_data <- fxn_jpg_map_files(index_site, 
-                                index_year, 
-                                done_rename) 
+  index_data <- fxn_jpg_map_files(index_site, index_year, done_rename) 
   
   if(nrow(index_data) == 0) stop("No deployments to summarize")
   
@@ -100,17 +92,67 @@ fxn_jpg_summary <- function(index_site,
            from_to = str_sub(file_name, 6, 22), 
            
            yymmdd_to = substrRight(id, 6),
-           has_camera = str_detect(file_name, 
-                                   camera), 
-           has_yymmdd_to = str_detect(file_name,
-                                      yymmdd_to))
-  
+           has_camera = str_detect(file_name, camera), 
+           has_yymmdd_to = str_detect(file_name, yymmdd_to))
   
   # Count parentheses in image file name ---- 
   # show files with 0 or 1 set of parentheses
   # 0: confirm that these have been renamed
-  check_parentheses <- 
-    fxn_jpg_check_parentheses(index_data)
+  fxn_jpg_check_parentheses <- function(index_data) {
+    
+    # Count parentheses and check for mismatches
+    check_parentheses <- 
+      index_data %>%
+      select(id, file_name) %>%
+      mutate(count_from = str_count(file_name, "\\("), 
+             count_to = str_count(file_name, "\\)"), 
+             n_paren = 
+               case_when(
+                 count_from == 1 & count_to == 1 ~ "one", 
+                 count_from == 0 | count_to == 0 ~ "none", 
+                 count_from > 1 | count_to > 1 ~ "multiple")) %>%
+      relocate(id, n_paren)
+    
+    # Count images by parentheses
+    count_parentheses <-
+      check_parentheses %>%
+      group_by(id, n_paren) %>%
+      count() 
+    
+    # Identify ids with an error: 0 or 2+
+    count_parentheses_example <- 
+      check_parentheses %>%
+      group_by(id, n_paren) %>%
+      sample_n(1) %>%
+      rename(example = file_name)
+    
+    list_ids_error <- 
+      count_parentheses %>%
+      filter(n_paren %nin% "one") %>%
+      distinct(id) %>%
+      pull(id)
+    
+    if(length(list_ids_error) > 0) {
+      message("Zero or multiple parentheses")
+      print(count_parentheses_example %>%
+              filter(id %in% list_ids_error))
+    }
+    
+    # Identify correct parentheses and sample file names
+    list_ids_good <- 
+      count_parentheses %>%
+      filter(n_paren %in% "one") %>%
+      distinct(id) %>%
+      pull(id)
+    
+    if(length(list_ids_good) > 0) {
+      message("One set of parentheses found")
+      print(count_parentheses_example %>%
+              filter(id %in% list_ids_good))
+    }
+  }
+  
+  check_parentheses <- fxn_jpg_check_parentheses(index_data)
   
   # Create image_n from parentheses ----
   # Subset file_name to values before parentheses  
@@ -121,10 +163,8 @@ fxn_jpg_summary <- function(index_site,
   # Compare id, date_from, date_to, camera with log
   jpg_init_review <-
     index_data %>%
-    mutate(image_prefix = 
-             split_parenthesis[,1], 
-           has_jpg_ext = 
-             str_detect(image_prefix, ".JPG")) %>%
+    mutate(image_prefix = split_parenthesis[,1], 
+           has_jpg_ext = str_detect(image_prefix, ".JPG")) %>%
     # Exclude renamed files
     filter(has_jpg_ext == FALSE) %>%
     distinct(id, camera, image_prefix) %>%
@@ -134,16 +174,12 @@ fxn_jpg_summary <- function(index_site,
                        log_date_from = date_from, 
                        log_date_to = date_to), "id") %>%
     mutate(jpg_date_to = ymd(str_sub(image_prefix, 6, 11)),
-           err_date_to = ifelse(log_date_to == jpg_date_to,
-                                FALSE, TRUE), 
-           err_camera = ifelse(camera == log_camera, 
-                               FALSE, TRUE)) %>%
-    relocate(id, 
-             starts_with("err")) 
+           err_date_to = ifelse(log_date_to == jpg_date_to, FALSE, TRUE), 
+           err_camera = ifelse(camera == log_camera, FALSE, TRUE)) %>%
+    relocate(id, starts_with("err")) 
   
   jpg_init_review
-  
- 
+
 }
 #   fxn_jpg_timestamp_check ----
 #   Check for timestamp errors 
@@ -151,141 +187,65 @@ fxn_jpg_timestamp_check <- function(index_site, index_year){
 
   fxn_define_camera_project(index_site)
   
-  # List deployments to read ----
-  list_id_exif <-
-    dlog %>%
-    filter(
-           has_data != FALSE,
-           # has_data == "UNK", 
+  # List deployments to read
+  list_id_exif <-  dlog %>%
+    filter(has_data != FALSE,
            done_rename == FALSE,
            done_exif == FALSE) %>%
     pull(id) 
   
-  # Create an initial map of image files ----
+  # Create an initial map of image files 
   # Set done_rename = TRUE here
   jpg_init <- 
-    fxn_jpg_map_files(index_site, 
-                      index_year,
-                      done_rename = FALSE) %>%
+    fxn_jpg_map_files(index_site, index_year, done_rename = FALSE) %>%
     filter(id %in% list_id_exif)  
-  
-  # jpg_init %>%
-  #   group_by(id) %>%
-  #   count() %>%
-  #   arrange(n)
 
-  # Iterate by deployment to read exif info ----
+  # Iterate by deployment to read exif info 
   index_list <- unique(jpg_init$id)
-  
-  # index_id = index_list[8]
+   
   for(index_id in index_list){
     
     cat(index_id, "\n")
     
-    subset <- 
-      dlog %>%
+    subset <- dlog %>%
       filter(id %in% index_id) 
     
-    index_path_jpg <-
-      jpg_init %>%
+    index_path_jpg <- jpg_init %>%
       filter(id %in% index_id) %>%
       pull(path)
     
-    exif_info <-
-      fxn_exif_read(index_path_jpg = index_path_jpg, 
-                    index_id = index_id)
+    exif_info <- fxn_exif_read(index_path_jpg = index_path_jpg, index_id = index_id)
     
-    # Check date_to and date_from  ----
+    # Check date_to and date_from 
     check_dates <- fxn_jpg_check_dates(index_exif = exif_info)
     
     # Identify date errors
     if(nrow(check_dates) > 0){
-      
       cat(" ...Check dates", "\n")
     }
     
     # Check file size  ----
-    check_size <- 
-      exif_info %>%
+    check_size <- exif_info %>%
       filter(file_size == 0) 
     
     # Identify date errors
     if(nrow(check_size) > 0){
-      
       cat(" ...", nrow(check_size), "files with size 0", "\n")
     }
   }
   
 }
-#   fxn_jpg_check_parentheses  ----
-fxn_jpg_check_parentheses <- function(index_data) {
-  
-  # Count parentheses and check for mismatches
-  check_parentheses <- 
-    index_data %>%
-    select(id,
-           file_name) %>%
-    mutate(count_from = str_count(file_name, "\\("), 
-           count_to = str_count(file_name, "\\)"), 
-           n_paren = 
-             case_when(
-               count_from == 1 & count_to == 1 ~ "one", 
-               count_from == 0 | count_to == 0 ~ "none", 
-               count_from > 1 | count_to > 1 ~ "multiple")) %>%
-    relocate(id, n_paren)
-  
-  # Count images by parentheses
-  count_parentheses <-
-    check_parentheses %>%
-    group_by(id, n_paren) %>%
-    count() 
-  
-  # Identify ids with an error: 0 or 2+
-  count_parentheses_example <- 
-    check_parentheses %>%
-    group_by(id, n_paren) %>%
-    sample_n(1) %>%
-    rename(example = file_name)
-  
-  list_ids_error <- 
-    count_parentheses %>%
-    filter(n_paren %nin% "one") %>%
-    distinct(id) %>%
-    pull(id)
-
-    if(length(list_ids_error) > 0) {
-    message("Zero or multiple parentheses")
-    print(count_parentheses_example %>%
-            filter(id %in% list_ids_error))
-  }
-  
-  # Identify correct parentheses and sample file names
-  list_ids_good <- 
-    count_parentheses %>%
-    filter(n_paren %in% "one") %>%
-    distinct(id) %>%
-    pull(id)
-  
-  if(length(list_ids_good) > 0) {
-    message("One set of parentheses found")
-    print(count_parentheses_example %>%
-            filter(id %in% list_ids_good))
-  }
-}
 #   fxn_jpg_check_dates ----
 fxn_jpg_check_dates <- function(index_exif){
   
   # Get survey dates from dlog
-  dlog_subset <- 
-    dlog %>%
+  dlog_subset <- dlog %>%
     select(id, date_from, date_to)
   
   # Check date_to and date_from
-  check_dates <-
-    index_exif %>%
+  check_dates <- index_exif %>%
     left_join(dlog_subset, "id") %>%
-    filter(date < date_from |
-             date > date_to)
+    filter(date < date_from | date > date_to)
   
   return(check_dates)
   
@@ -293,7 +253,6 @@ fxn_jpg_check_dates <- function(index_exif){
 #   fxn_jpg_rename_exif ----
 # Add image_n to file_name using date_time order 
 # Uses regex to replace "2019:01:01" with "2019-01-01"
-
 fxn_jpg_rename_exif <- function(index_site, index_year){
   
   # Map all images 
@@ -304,8 +263,8 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
   
   # Iterate by deployment 
   index_list <- unique(jpg_init$id)
-  
-  for(index_id in index_list){
+
+  for(index_id in index_list[3]){
     
     # Create helpers
     cat(index_id, "\nChecking EXIF info\n")
@@ -319,14 +278,14 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
                                index_id = index_id) %>%
       arrange(id, date_time) 
     
-        # Check image dates
+    # Check image dates
     if (nrow(fxn_jpg_check_dates(exif_info)) > 0) {
       message(paste0("Image date(s) outside survey period: ", index_id))
       break
     } else {
       cat("Dates OK\n")
     }
-
+    
     # Check file size
     if (nrow(exif_info %>% filter(file_size == 0)) > 0) {
       cat("Files with size 0\n")
@@ -452,8 +411,7 @@ fxn_jpg_check_rename <- function(index_site, index_year){
 # ---------------------------------------------------------- -----
 # Create _exif tables ----
 #   fxn_exif_read ----
-fxn_exif_read <- function(index_path_jpg, 
-                          index_id){
+fxn_exif_read <- function(index_path_jpg, index_id){
   
   exif_info <-
     exif_read(path = index_path_jpg,
@@ -467,8 +425,7 @@ fxn_exif_read <- function(index_path_jpg,
            camera_make = make,
            camera_model = model) %>%
     mutate(id = index_id,
-           image_id = str_remove(file_name,
-                                 ".JPG"),
+           image_id = str_remove(file_name, ".JPG"),
   
            # For colon between date values
            regex =
@@ -480,8 +437,7 @@ fxn_exif_read <- function(index_path_jpg,
              case_when(
                str_detect(date_time, ":") ~
                  as_datetime(regex), 
-               TRUE ~ as_datetime(date_time)
-             ),
+               TRUE ~ as_datetime(date_time)),
            
            camera = str_sub(index_id, 1, 4),
            date = as_date(date_time),
@@ -513,20 +469,16 @@ fxn_exif_create <- function(index_site, index_year){
   
   fxn_define_camera_project(index_site)
   
-  # List deployments to read ----
-  list_id_exif <-
-    dlog %>%
+  # List deployments to read  
+  list_id_exif <- dlog %>%
     filter(has_data != FALSE, 
            done_rename == TRUE,
            done_exif == FALSE) %>%
     pull(id) 
-  
-  # Create an initial map of image files ----
+
+  # Create an initial map of image files 
   # Set done_rename = TRUE here
-  jpg_init <- 
-    fxn_jpg_map_files(index_site, 
-                      index_year,
-                      done_rename = TRUE) %>%
+  jpg_init <-  fxn_jpg_map_files(index_site, index_year, done_rename = TRUE) %>%
     filter(id %in% list_id_exif)
  
   # Iterate by deployment to read exif info ----
@@ -537,43 +489,30 @@ fxn_exif_create <- function(index_site, index_year){
     
     cat(index_id, "\n")
     
-    subset <- 
-      dlog %>%
+    subset <- dlog %>%
       filter(id %in% index_id) 
     
-    index_path_jpg <-
-      jpg_init %>%
+    index_path_jpg <- jpg_init %>%
       filter(id %in% index_id) %>%
       pull(path)
     
-    exif_info <-
-      fxn_exif_read(index_path_jpg = index_path_jpg, 
-                    index_id = index_id)
+    exif_info <- fxn_exif_read(index_path_jpg = index_path_jpg, index_id = index_id)
     
     # Check date_to and date_from  ----
-    check_dates <- 
-      exif_info %>%
-      filter(date < subset$date_from |
-               date > subset$date_to)
+    check_dates <- exif_info %>%
+      filter(date < subset$date_from | date > subset$date_to)
     
     # Identify date errors
     if(nrow(check_dates) > 0){
-      message(paste0("Image date(s) outside survey period: ", 
-                     index_id))
+      message(paste0("Image date(s) outside survey period: ", index_id))
       break
     }
     # If no date errors: write _exif
     if(nrow(check_dates) == 0){
-      
-      # Write exif table ----
-      exif_info %>%
-        write_csv(here(path_exif,
-                       paste0(index_id, "_exif.csv")),
-                  na = "")
-      
+     
+      write_csv(exif_info, here(path_exif, paste0(index_id, "_exif.csv")), na = "")
     }
     
-  
   }
 }
 
@@ -588,16 +527,15 @@ fxn_exif_collate_csv <- function(index_site){
                            recursive = FALSE,
                            pattern = '*.csv')
   
-  # # Recursive to include z_archive 
+  # # Recursive to include z_archive
   # list_files <- list.files(here(path_exif),
   #                          recursive = TRUE,
   #                          pattern = '*.csv')  %>%
   #   as_tibble() %>%
-  #   mutate(id = str_remove(basename(value),
-  #                          "_exif.csv")) %>%
+  #   mutate(id = str_remove(basename(value), "_exif.csv")) %>%
   #   filter(id %in% list_id_blank) %>%
   #   pull(value)
-  # 
+  
   datalist <- list()
   for(index_csv in list_files){
     
@@ -623,14 +561,9 @@ fxn_exif_collate_csv <- function(index_site){
                    image_width = col_character(),
                    image_height = col_character(),
                    file_size = col_character()
-                 )
-      ) %>%
-      mutate(id = str_remove(basename(index_csv), 
-                             "_exif.csv"), 
-             date = date(parse_date_time(date,
-                                         c("ymd", 
-                                           "mdy"))))
-    
+                 )) %>%
+      mutate(id = str_remove(basename(index_csv), "_exif.csv"), 
+             date = date(parse_date_time(date, c("ymd", "mdy"))))
   }
   bind_datalist <- do.call(bind_rows, datalist)
 }
@@ -647,13 +580,8 @@ fxn_exif_summary <- function(index_site){
   
   # Write to csv for manual revision of log  
   index_file_name <- paste0(index_site, "_exif-summary.csv")
-  
   fxn_archive_old_csv(index_file_name = index_file_name)
-  
-  write_csv(exif_summary,
-            here(path_out,
-                 index_file_name), 
-            na = "")
+  write_csv(exif_summary,  here(path_out,  index_file_name), na = "")
   
 }
 
@@ -662,28 +590,23 @@ fxn_exif_summary_errors <- function(index_site) {
   
   fxn_define_camera_project(index_site)
   exif_all <- fxn_exif_collate_csv(index_site)
-  exif_summary <- fxn_table_check_dlog(exif_all, 
-                                       index_type = "exif") 
+  exif_summary <- fxn_table_check_dlog(exif_all, index_type = "exif") 
   
   # List all columns starting with "err_"
   err_cols <- grep("^err_", names(exif_summary), value = TRUE)
   
   # Filter rows with any "err_" column set to TRUE
-  id_errors <- 
-    exif_summary %>%
+  id_errors <-  exif_summary %>%
     filter(if_any(all_of(err_cols), ~ . == TRUE))
   
   # Join with dlog and rearrange columns
-  exif_errors <-
-    id_errors %>%
-    left_join(
-      dlog %>% 
-        select(id,
-               error_type,
-               error_subtype, 
-               starts_with("n_img_excl_from")), 
-      by = "id"
-    ) %>%
+  exif_errors <- id_errors %>%
+    left_join(dlog %>% 
+                select(id,
+                       error_type,
+                       error_subtype, 
+                       starts_with("n_img_excl_from")), 
+              by = "id") %>%
     relocate(id, error_type, error_subtype)
   
   if(nrow(exif_errors) == 0){
@@ -693,13 +616,8 @@ fxn_exif_summary_errors <- function(index_site) {
   # Write to csv
   if(nrow(exif_errors) > 0){
     index_file_name <- paste0(index_site, "_exif-summary_errors.csv")
-    
     fxn_archive_old_csv(index_file_name = index_file_name)
-    
-    write_csv(exif_errors,
-              here(path_out,
-                   index_file_name), 
-              na = "")
+    write_csv(exif_errors, here(path_out, index_file_name), na = "")
   }
 }
 
