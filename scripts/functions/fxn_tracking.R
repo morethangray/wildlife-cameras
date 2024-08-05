@@ -107,7 +107,7 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     filter(err_id == TRUE) %>%
     remove_empty("cols") 
   
-  # Get end date of prior survey from dlog ----
+  # Get end date of prior survey from dlog 
   # Define function
   # index_data = tbl_init
   fxn_get_last_date_from <- function(index_data){
@@ -136,9 +136,9 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     return(with_date_from)
   }
  
-  # Display results of this check for new folders ----
+  # Display results of this check for new folders 
   if(nrow(tbl_init) == 0){
-    cat(paste0("No new image folders found for ", index_site, "_", index_year))
+    cat(paste0("No new image folders found for ", index_site, "_", index_year, "\n"))
     
   }else{
     # Revise table of new folders with potential dates 
@@ -168,8 +168,39 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
 # index_type = "vault"
 fxn_find_files_to_process <- function(index_type){
   
-  # Archive files that are in vault ----
+  # Archive files that are in vault  
+  fxn_archive_final_dupes <- function(){
+    index_path = path_table_qc
+    
+    dlog_vault <- 
+      dlog %>%
+      filter(done_vault == TRUE)
+    
+    # Map files in folder
+    all_files <-
+      tibble(path = dir_ls(path = index_path,
+                          recurse = FALSE,
+                          type = "file")) %>%
+      mutate(file_name = path_file(path),
+             id = str_sub(file_name, 1, 11)) 
+    
+    files_to_archive <-
+      all_files %>%
+      filter(id %in% unique(dlog_vault$id)) %>%
+      mutate(is_qc = str_detect(file_name, "tidy_qc"), 
+             folder_new = ifelse(is_qc == TRUE,
+                                 here(index_path,  "z_archive/"), 
+                                 here(index_path, "z_archive/image-tables_final_tidy")), 
+             path_new = here(folder_new, file_name)) %>%
+      select(path_new, path) 
+    
+    # Move _tidy files to archive
+    file_move(path = files_to_archive$path,
+              new_path = files_to_archive$path_new)
+ 
+  }
   fxn_archive_final_dupes()
+  
   # Identify files that need processing ---- 
   # Filter dlog using done_ columns 
   # Need image rename 
@@ -217,7 +248,6 @@ fxn_find_files_to_process <- function(index_type){
                       mustWork = FALSE)
       
       index_message <- paste0("ACTION NEEDED - Create blank image tables for ")
-      
     }
     
     # Need tidy 
@@ -253,11 +283,8 @@ fxn_find_files_to_process <- function(index_type){
     list_id_need <- unique(filtered_dlog$id)
     n_files_need <- length(list_id_need)
     
-    # Identify all files by type 
-    # List the id that need processing
-    # list_id <- unique(filtered_dlog$id)
     
-    # Map files in folder
+     # Map files in folder
     all_files <- 
       tibble(path = dir_ls(path = index_path,
                            recurse = FALSE,
@@ -296,7 +323,7 @@ fxn_find_files_to_process <- function(index_type){
       pull(id)
     
     if(length(list_id_has_multiple) > 0){
-      cat("Multiple files for",  length(list_id_has_multiple), "deployments", "\n")
+      message("Multiple files for",  length(list_id_has_multiple), "deployments", "\n")
       print(list_id_has_multiple)
     }
     
@@ -353,62 +380,47 @@ fxn_find_files_to_process <- function(index_type){
         message(paste0(index_message,  n_files, " files"))
       }
       if(length(n_files) == 0){
-        message(paste0("No action needed for ", index_type))
+        cat(paste0("No action needed for ", index_type, "\n"))
       }
       
     }else{
       if(nrow(filtered_dlog) == 0){
-        message(paste0("No action needed for ", index_type))
+        cat(paste0("No action needed for ", index_type, "\n"))
       }
       if(nrow(filtered_dlog) > 0){
         message(paste0("ACTION NEEDED - Create ", index_type, " tables for ", length(missing_files), " deployments in dlog"))
-       
         
       }
     }
-    
     return(all_files)
-    
   }
- 
 }
+# index_type = "blank"
 #
-# # Archive _final files when _final_qc is present ----
-# #   fxn_archive_final_dupes  ----
-fxn_archive_final_dupes <- function(){
-#   
-  index_path = path_table_qc
-
-  dlog_vault <- 
-    dlog %>%
-    filter(done_vault == TRUE)
+# fxn_check_file_status -----
+fxn_check_file_status <- function(){
   
-  # Map files in folder
-  all_files <-
-    tibble(path =
-             dir_ls(path = index_path,
-                    recurse = FALSE,
-                    type = "file")) %>%
-    mutate(file_name = path_file(path),
-           id = str_sub(file_name, 1, 11)) 
+  check_rename <- fxn_find_files_to_process("rename") 
   
-  files_to_archive <-
-    all_files %>%
-    filter(id %in% unique(dlog_vault$id)) %>%
-    
-    mutate(is_qc = str_detect(file_name, "tidy_qc"), 
-           folder_new = ifelse(is_qc == TRUE,
-                             here(index_path,  "z_archive/"), 
-                             here(index_path, "z_archive/image-tables_final_tidy")), 
-           path_new = here(folder_new, file_name)) %>%
-      select(path_new, path) 
-
-  # Move _tidy files to archive
-  file_move(path = files_to_archive$path,
-            new_path = files_to_archive$path_new)
-
-#   
+  check_exif <- fxn_find_files_to_process("exif") %>%
+    filter(need_process == TRUE)
+  
+  check_blank <- fxn_find_files_to_process("blank")  %>%
+    filter(need_process == TRUE)
+ 
+  check_tidy <- fxn_find_files_to_process("tidy")  %>%
+    filter(need_process == TRUE)
+  
+  check_vault <- fxn_find_files_to_process("vault")  %>%
+    filter(need_process == TRUE)
+  
+  all_checks <- list(check_rename = check_rename, 
+                     check_exif = check_exif, 
+                     check_blank = check_blank, 
+                     check_tidy = check_tidy, 
+                     check_vault = check_vault)
 }
+# # Archive _final files when _final_qc is present ----
 # # Unarchive done_ files ----
 #   fxn_unarchive_done_files ----
 # index_type = "catalog"

@@ -29,9 +29,6 @@ index_site = "FOR"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----
-# * * * REVISE MESSAGES * * *  ----
-# "ok" messages as cat()
-# only red when need action 
 # Compare inventory tracking ----
 dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_catalog"]])
@@ -44,28 +41,19 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #   * * * WRITE CSV AS DLOG TEMPLATE * * *  ----
 #
-# Need processing ----
+# Find image tables that need processing ----
+check_file_status <- fxn_check_file_status()
+# Individual tables can be viewed using check_file_status$<NAME>
 #   Rename images: 0P; 0M
-check_rename <- fxn_find_files_to_process("rename")
-#
+check_file_status$check_rename
 #   Exif: 0P; 0M
-check_exif <- fxn_find_files_to_process("exif")
-check_exif %>%
-  filter(need_process == TRUE)
-#
+check_file_status$check_exif 
 #   Blank: 0P; 0M
-check_blank <- fxn_find_files_to_process("blank")
-#
+check_file_status$check_blank
 #   Tidy: 0P; 0M
-check_tidy <- fxn_find_files_to_process("tidy")
-# check_tidy %>%
-#   filter(need_process == TRUE)
-#
+check_file_status$check_tidy 
 #   Vault: 0P; 0M
-check_vault <- fxn_find_files_to_process("vault")
-# check_vault %>%
-#   filter(need_process == TRUE) %>%
-#   pull(id)
+check_file_status$check_vault 
 # #
 # ========================================================== -----
 # REVIEW IMAGE FOLDERS ----
