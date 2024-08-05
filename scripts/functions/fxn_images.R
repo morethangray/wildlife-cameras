@@ -20,7 +20,7 @@ fxn_jpg_map_files <- function(index_site,
   
   fxn_define_camera_project(index_site)
   
-  # List the deployments ----
+  # List the deployments 
   if(done_rename == FALSE){
     subset_dlog <- 
       dlog %>%
@@ -31,7 +31,7 @@ fxn_jpg_map_files <- function(index_site,
       dlog %>%
       filter(done_rename == TRUE)
   }
-  
+  # Subset to deployments that are renamed but not yet _blank
   list_id_rename <- 
     subset_dlog %>%
     filter(done_blank == FALSE,
@@ -40,7 +40,7 @@ fxn_jpg_map_files <- function(index_site,
            drive_img == "K") %>%
     pull(id)
   
-  # Map all jpg files ----
+  # Map all jpg files 
   datalist = list()
   
   # index_id = list_id_rename[1]
@@ -264,10 +264,10 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
   # Iterate by deployment 
   index_list <- unique(jpg_init$id)
 
-  for(index_id in index_list[3]){
+  for(index_id in index_list){
     
     # Create helpers
-    cat(index_id, "\nChecking EXIF info\n")
+    cat(index_id, "\n   Checking EXIF info\n")
     
     index_path_jpg <- jpg_init %>%
       filter(id %in% index_id) %>%
@@ -283,7 +283,7 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
       message(paste0("Image date(s) outside survey period: ", index_id))
       break
     } else {
-      cat("Dates OK\n")
+      cat("   Dates OK\n")
     }
     
     # Check file size
@@ -291,7 +291,7 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
       cat("Files with size 0\n")
       break
     } else {
-      cat("File size OK\n")
+      cat("   File size OK\n")
     }
     
     # Rename image files if no errors
@@ -361,7 +361,7 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
       select(path_from = path_temp, path_to = path_file) %>%
       fxn_wrap_file_rename()
     
-    cat("Renamed files\n")
+    cat("   Renamed files\n")
     
     # Write exif table  ----
     add_image_n %>%
@@ -371,7 +371,7 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
              -file_name_temp) %>%
       write_csv(here(path_exif, paste0(index_id, "_exif.csv")), na = "")
     
-    cat("Created _exif.csv\n")
+    cat("   Created _exif.csv\n")
   }
 }
 #   fxn_jpg_check_rename  ----
@@ -384,11 +384,14 @@ fxn_jpg_check_rename <- function(index_site, index_year){
     fxn_jpg_map_files(index_site, 
                       index_year,
                       done_rename = TRUE) %>%
+  
+  # Confirm file_name uses correct id
+  # Confirm file_name length is 21 characters
     mutate(file_name_id = str_sub(file_name, 1, 11),
            file_name_id_ok = id == file_name_id,
            file_name_length = nchar(file_name),
            file_name_length_ok = file_name_length == 21) %>%
-  
+    
     # Identify rename errors 
     filter(file_name_id_ok == FALSE | 
              file_name_length_ok == FALSE) 

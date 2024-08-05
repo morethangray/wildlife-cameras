@@ -480,7 +480,7 @@ fxn_table_check_blank <- function(index_site){
   
   fxn_define_camera_project(index_site)
   
-  # Create input for checks ----
+  # Create input for checks
   dlog_subset <- 
     dlog %>%
     filter(has_data != FALSE,
@@ -506,24 +506,22 @@ fxn_table_check_blank <- function(index_site){
     filter(id %in% list_id_dlog_subset) %>%
     pull(file_name)
 
-  # tables_all: Read all tables ----
+  # tables_all: Read all tables 
   # Read and process each file, then combine into one tibble
   tables_all <-
     map_df(list_image_tables, ~ {
       
       data <- 
-        fxn_wrap_read_excel(index_path = 
-                              here(path_table_blank, .x)) %>%
+        fxn_wrap_read_excel(index_path = here(path_table_blank, .x)) %>%
         clean_names()
     })
 
-  # tables_summary: Summarize tables by id ----
-  tables_summary <- fxn_table_check_dlog(tables_all, 
-                                         index_type = "blank")
-  # tables_errors: Subset summary to errors ----
+  # tables_summary: Summarize tables by id 
+  tables_summary <- fxn_table_check_dlog(tables_all, index_type = "blank")
+  # Subset summary to errors
+  
   id_errors <- 
     tables_summary %>%
-    # remove_constant()  %>%
     gather(column, value, starts_with("err")) %>%
     filter(value == TRUE, 
            ends_early != TRUE, 

@@ -282,8 +282,6 @@ fxn_define_camera_project <- function(index_site){
                       file_name_dlog)) %>%
     tidyr::drop_na(id) %>%
     arrange(id)
-  # tidyr::drop_na(n_survey) %>%
-  # filter(n_survey %nin% "N/A")
   
   if(str_detect(index_site, "legacy-data") == FALSE){
     ilog <<-

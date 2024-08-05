@@ -6,7 +6,7 @@ fxn_dlog_ilog_compare <- function(index_site){
   
   fxn_define_camera_project(index_site)
   
-  # Create dlog_subset to compare with ilog ----
+  # Create dlog_subset to compare with ilog 
   if(index_site == "MMP"){
     year_filter <- 2016
   }else{
@@ -31,16 +31,16 @@ fxn_dlog_ilog_compare <- function(index_site){
   missing_in_ilog <- setdiff(dlog_subset$id, ilog$id)
   missing_in_dlog <- setdiff(ilog$id, dlog_subset$id)
   
-  # Display results ----
+  # Display results 
   if(length(missing_in_ilog) == 0) {
-    message("No IDs are missing in ilog")
+    cat("No IDs are missing in ilog\n")
   } else {
     message(paste("IDs missing in ilog:", 
                   paste(missing_in_ilog, 
                         collapse = ", ")))
   }
   if(length(missing_in_dlog) == 0) {
-    message("No IDs are missing in dlog")
+    cat("No IDs are missing in dlog\n")
   } else {
     message(paste("IDs missing in dlog:", 
                   paste(missing_in_dlog, 
@@ -63,8 +63,6 @@ fxn_dlog_ilog_compare <- function(index_site){
                           "done_qc", 
                           "done_vault")
   result_list <- list()
-  
-  # col_name <- columns_to_compare[3]
   
   for (col_name in columns_to_compare) {
     col_1 <- paste0(col_name, "_ilog")
@@ -90,13 +88,12 @@ fxn_dlog_ilog_compare <- function(index_site){
   # For example, to see discrepancies for 'done_blank', you can run:
   # View(result_list[["done_tidy"]])
   
-  # Display results ----
+  # Display results 
   if(length(result_list) == 0) {
-    message("All ilog and dlog values match")
+    cat("All ilog and dlog values match\n")
   } else {
     message(paste("Different values found"))
     print(result_list)
-    # View(result_list[["done_qc"]])
   }
 }
 #   fxn_dir_jpg_find_new ----
@@ -139,9 +136,9 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     return(with_date_from)
   }
  
-  # Report outcome of this check for new folders ----
+  # Display results of this check for new folders ----
   if(nrow(tbl_init) == 0){
-    message(paste0("No new image folders found for ", index_site, "_", index_year))
+    cat(paste0("No new image folders found for ", index_site, "_", index_year))
     
   }else{
     # Revise table of new folders with potential dates 
@@ -157,131 +154,6 @@ fxn_dir_jpg_find_new <- function(index_site, index_year){
     index_file_name <- paste0(index_site, "_folder-names_init.csv")
     fxn_archive_old_csv(index_file_name = index_file_name)
     write_csv(tbl_new,  here(path_out, index_file_name), na = "")
-  }
-}
-
-#   fxn_table_find_new ----
-# index_type = "catalog"
-fxn_table_find_new <- function(index_site) {
-  
-  # Define camera project (set up environment for function)
-  fxn_define_camera_project(index_site)
-  
-  # Types to iterate over
-  index_types <- c("blank", "catalog", "qc")
-  
-  # Helper functions ----
-  #   get_done_ids ----
-  get_done_ids <- function(index_type){
-    
-    # Initialize index_path
-    index_path <- NULL
-    
-    # Use a single if-else construct
-    if(index_type == "blank") {
-      
-      filter_dlog <- dlog %>%
-        filter(use_data == TRUE,
-               done_blank == TRUE)
-      index_path <- path_table_blank
-      
-    } else if(index_type == "catalog") {
-      
-      filter_dlog <- dlog %>%
-        filter(use_data == TRUE,
-               done_catalog == TRUE)
-      index_path <- path_table_catalog
-      
-    } else if(index_type == "qc") {
-      
-      filter_dlog <- dlog %>%
-        filter(use_data == TRUE,
-               done_qc == TRUE)
-      index_path <- path_table_qc
-      
-    } else {
-      stop("Invalid index_type provided")
-    }
-    
-    # Return a list containing the IDs and the corresponding path
-    list(
-      ids = filter_dlog %>%
-        arrange(id) %>%
-        pull(id),
-      path = index_path
-    )
-  }
-  #   create_lookup_subset ----
-  # Helper function to construct the lookup subset table
-  create_lookup_subset <- function(index_type) {
-    tibble(
-      type = c("blank", "catalog", "tidy", "qc"),
-      suffix = c("blank", "final", "final_tidy", "final_tidy_qc"),
-      folder = c("blank", "catalog", "qc", "qc"),
-      length = c(17, 17, 22, 28)
-    ) %>%
-      mutate(path = here(path_data,
-                         paste0("image-tables_",
-                                folder))) %>%
-      filter(type %in% all_of(index_type))
-  }
-  
-  #   map_image_tables ----
-  # Helper function to map new image tables
-  map_image_tables <- function(lookup_subset,
-                               index_type_suffix,
-                               list_id) {
-    dir_ls(path = lookup_subset$path,
-           recurse = FALSE,
-           type = "file") %>%
-      tibble(path = .) %>%
-      mutate(
-        file_name = path_file(path_ext_remove(path)),
-        file_name = str_replace_all(file_name, "Final", "final"),
-        file_name_length = nchar(file_name)
-      ) %>%
-      filter(
-        str_detect(file_name, index_type_suffix),
-        file_name_length == lookup_subset$length
-      ) %>%
-      mutate(
-        id = str_sub(file_name, 1, 11),
-        type = lookup_subset$type,
-        suffix = lookup_subset$suffix,
-        file_suffix = str_remove_all(file_name, paste0(id, "_"))
-      ) %>%
-      select(id, type, suffix, file_suffix, file_name) %>%
-      filter(id %nin% list_id$ids)
-  }
-  # Main function to find new image tables for all index types ----
-  # index_type = index_types[3]
-  for (index_type in index_types) {
-    index_done <- paste0("done_", index_type)
-    list_id <- get_done_ids(index_type)
-    
-    lookup_subset <- create_lookup_subset(index_type)
-    index_path <- lookup_subset$path
-    index_type_suffix <- lookup_subset$suffix
-    
-    tbl_new <- map_image_tables(lookup_subset,
-                                index_type_suffix,
-                                list_id)
-    # View(tbl_new)
-    
-    list_id_new <- unique(tbl_new$id)
-    
-    n_new <- length(list_id_new)
-    
-    if (n_new == 0) {
-      message("No new ", index_done,
-              " image tables for ", index_site)
-    } else {
-      message("Revise deployment log: ",
-              n_new, " new ", index_done,
-              " image table(s) for ", index_site)
-      print(tbl_new)
-      # View(tbl_new)
-    }
   }
 }
 
@@ -307,7 +179,7 @@ fxn_find_files_to_process <- function(index_type){
       filter(done_rename %in% c("FALSE", "REDO"))
     
     if(nrow(filtered_dlog) == 0){
-      message(paste0("No images need to be renamed"))
+      cat(paste0("No images need to be renamed\n"))
     }
     if(nrow(filtered_dlog) > 0){
       message(paste0("ACTION NEEDED - Rename images for ", nrow(filtered_dlog),  " deployments in dlog"))
@@ -381,22 +253,21 @@ fxn_find_files_to_process <- function(index_type){
     list_id_need <- unique(filtered_dlog$id)
     n_files_need <- length(list_id_need)
     
-    # Identify all files by type ----
+    # Identify all files by type 
     # List the id that need processing
     # list_id <- unique(filtered_dlog$id)
     
     # Map files in folder
     all_files <- 
-      tibble(path =
-               dir_ls(path = index_path,
-                      recurse = FALSE,
-                      type = "file")) %>%
+      tibble(path = dir_ls(path = index_path,
+                           recurse = FALSE,
+                           type = "file")) %>%
+               
       mutate(file_name = path_file(path),
              id = str_sub(file_name, 1, 11), 
              need_process = id %in% list_id_need) %>%
       filter(str_detect(id, "Thumbs") == FALSE) %>%
-      relocate(id, 
-               need_process) 
+      relocate(id, need_process) 
     
     if(index_type == "vault"){
       
@@ -429,7 +300,7 @@ fxn_find_files_to_process <- function(index_type){
       print(list_id_has_multiple)
     }
     
-    # Summarize files by status in dlog ----
+    # Summarize files by status in dlog  
     summarize_files <- 
       all_files %>%
       mutate(process_type = index_type) %>%
@@ -443,7 +314,6 @@ fxn_find_files_to_process <- function(index_type){
         summarize_files %>%
         filter(need_process == TRUE) %>%
         pull(n)
-      
       
       # Write messages based on type of processing needed
       if(length(n_files) > 0){
@@ -492,20 +362,7 @@ fxn_find_files_to_process <- function(index_type){
       }
       if(nrow(filtered_dlog) > 0){
         message(paste0("ACTION NEEDED - Create ", index_type, " tables for ", length(missing_files), " deployments in dlog"))
-        
-        # List the file info
-        # print(filtered_dlog %>%
-        #         filter(id %in% missing_files) %>%
-        #         select(id, 
-        #                done_fix, 
-        #                done_rename,
-        #                done_exif,
-        #                done_blank,
-        #                done_catalog, 
-        #                done_tidy, 
-        #                done_qc,
-        #                done_vault, 
-        #                starts_with("error")))
+       
         
       }
     }
@@ -669,3 +526,82 @@ fxn_unarchive_done_files <- function(index_type){
 }
 
 # ========================================================== -----
+
+# Create dlog rows ----
+# list_dlog_columns <- c(
+#   "id",
+#   "camera",
+#   "year_to",
+#   "has_data",
+#   "use_data",
+#   "done_fix",
+#   "done_intern",
+#   "done_rename",
+#   "done_exif",
+#   "done_blank",
+#   "done_catalog",
+#   "done_tidy",
+#   "done_qc",
+#   "done_vault",
+#   "date_from",
+#   "date_to",
+#   "date_excl_from",
+#   "date_excl_to",
+#   "n_img_to",
+#   "n_img_excl_sets",
+#   "error_type",
+#   "error_subtype",
+#   "comments",
+#   "date_img_from",
+#   "date_img_to",
+#   "n_img_from",
+#   "n_img_excl_from_1",
+#   "n_img_excl_to_1",
+#   "n_img_excl_from_2",
+#   "n_img_excl_to_2",
+#   "n_img_excl_from_3",
+#   "n_img_excl_to_3",
+#   "drive_img",
+#   "date_added",
+#   "path_server",
+#   "id_orig")
+
+# input_data %>%
+#   mutate(
+#     # id = "",
+#     # camera = "",
+#     # year_to = "",
+#     has_data = "UNK",
+#     use_data = "UNK",
+#     done_fix = "N/A",
+#     done_intern = "FALSE",
+#     done_rename = "FALSE",
+#     done_exif = "FALSE",
+#     done_blank = "FALSE",
+#     done_catalog = "FALSE",
+#     done_tidy = "FALSE",
+#     done_qc = "FALSE",
+#     done_vault = "FALSE",
+#     # date_from = "",
+#     # date_to = "",
+#     date_excl_from = "N/A",
+#     date_excl_to = "N/A",
+#     # n_img_to = "",
+#     n_img_excl_sets = "0",
+#     error_type = "None",
+#     error_subtype = "N/A",
+#     comments = "None",
+#     # date_img_from = "",
+#     # date_img_to = "",
+#     n_img_from = "1",
+#     n_img_excl_from_1 = "0",
+#     n_img_excl_to_1 = "0",
+#     n_img_excl_from_2 = "0",
+#     n_img_excl_to_2 = "0",
+#     n_img_excl_from_3 = "0",
+#     n_img_excl_to_3 = "0",
+#     drive_img = "K",
+#     date_added = Sys.Date(),
+#     # path_server = ,
+#     id_orig = "N/A",
+#   )

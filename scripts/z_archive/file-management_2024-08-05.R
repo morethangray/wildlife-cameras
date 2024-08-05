@@ -44,6 +44,133 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
 #   * * * WRITE CSV AS DLOG TEMPLATE * * *  ----
 #
+# Image tables 
+#   fxn_table_find_new ----
+# index_type = "catalog"
+fxn_table_find_new <- function(index_site) {
+  
+  # Define camera project (set up environment for function)
+  fxn_define_camera_project(index_site)
+  
+  # Types to iterate over
+  index_types <- c("blank", "catalog", "qc")
+  
+  # Helper functions ----
+  #   get_done_ids ----
+  get_done_ids <- function(index_type){
+    
+    # Initialize index_path
+    index_path <- NULL
+    
+    # Use a single if-else construct
+    if(index_type == "blank") {
+      
+      filter_dlog <- dlog %>%
+        filter(use_data == TRUE,
+               done_blank == TRUE)
+      index_path <- path_table_blank
+      
+    } else if(index_type == "catalog") {
+      
+      filter_dlog <- dlog %>%
+        filter(use_data == TRUE,
+               done_catalog == TRUE)
+      index_path <- path_table_catalog
+      
+    } else if(index_type == "qc") {
+      
+      filter_dlog <- dlog %>%
+        filter(use_data == TRUE,
+               done_qc == TRUE)
+      index_path <- path_table_qc
+      
+    } else {
+      stop("Invalid index_type provided")
+    }
+    
+    # Return a list containing the IDs and the corresponding path
+    list(
+      ids = filter_dlog %>%
+        arrange(id) %>%
+        pull(id),
+      path = index_path
+    )
+  }
+  #   create_lookup_subset ----
+  # Helper function to construct the lookup subset table
+  create_lookup_subset <- function(index_type) {
+    tibble(
+      type = c("blank", "catalog", "tidy", "qc"),
+      suffix = c("blank", "final", "final_tidy", "final_tidy_qc"),
+      folder = c("blank", "catalog", "qc", "qc"),
+      length = c(17, 17, 22, 28)
+    ) %>%
+      mutate(path = here(path_data,
+                         paste0("image-tables_",
+                                folder))) %>%
+      filter(type %in% all_of(index_type))
+  }
+  
+  #   map_image_tables ----
+  # Helper function to map new image tables
+  map_image_tables <- function(lookup_subset,
+                               index_type_suffix,
+                               list_id) {
+    dir_ls(path = lookup_subset$path,
+           recurse = FALSE,
+           type = "file") %>%
+      tibble(path = .) %>%
+      mutate(
+        file_name = path_file(path_ext_remove(path)),
+        file_name = str_replace_all(file_name, "Final", "final"),
+        file_name_length = nchar(file_name)
+      ) %>%
+      filter(
+        str_detect(file_name, index_type_suffix),
+        file_name_length == lookup_subset$length
+      ) %>%
+      mutate(
+        id = str_sub(file_name, 1, 11),
+        type = lookup_subset$type,
+        suffix = lookup_subset$suffix,
+        file_suffix = str_remove_all(file_name, paste0(id, "_"))
+      ) %>%
+      select(id, type, suffix, file_suffix, file_name) %>%
+      filter(id %nin% list_id$ids)
+  }
+  # Main function to find new image tables for all index types ----
+  # index_type = index_types[3]
+  for (index_type in index_types) {
+    index_done <- paste0("done_", index_type)
+    list_id <- get_done_ids(index_type)
+    
+    lookup_subset <- create_lookup_subset(index_type)
+    index_path <- lookup_subset$path
+    index_type_suffix <- lookup_subset$suffix
+    
+    tbl_new <- map_image_tables(lookup_subset,
+                                index_type_suffix,
+                                list_id)
+    
+    list_id_new <- unique(tbl_new$id)
+    
+    n_new <- length(list_id_new)
+    
+    if (n_new == 0) {
+      message("No new ", index_done,
+              " image tables for ", index_site)
+    } else {
+      message("Revise deployment log: ",
+              n_new, " new ", index_done,
+              " image table(s) for ", index_site)
+      print(tbl_new)
+    }
+  }
+}
+
+fxn_table_find_new(index_site)
+
+# 
 # Need processing ----
 #   Rename images: 0P; 0M
 check_rename <- fxn_find_files_to_process("rename")
