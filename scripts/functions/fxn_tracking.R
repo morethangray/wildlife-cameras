@@ -397,7 +397,7 @@ fxn_find_files_to_process <- function(index_type){
 }
 # index_type = "blank"
 #
-# fxn_check_file_status -----
+#   fxn_check_file_status -----
 fxn_check_file_status <- function(){
   
   check_rename <- fxn_find_files_to_process("rename") 
@@ -420,8 +420,7 @@ fxn_check_file_status <- function(){
                      check_tidy = check_tidy, 
                      check_vault = check_vault)
 }
-# # Archive _final files when _final_qc is present ----
-# # Unarchive done_ files ----
+# Unarchive done_ files ----
 #   fxn_unarchive_done_files ----
 # index_type = "catalog"
 # fxn_define_camera_project(index_site)
