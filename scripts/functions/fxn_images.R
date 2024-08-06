@@ -37,6 +37,7 @@ fxn_jpg_map_files <- function(index_site,
     filter(done_blank == FALSE,
            has_data != FALSE, 
            year_to == index_year,
+           # drive_img == "L") %>%
            drive_img == "K") %>%
     pull(id)
   
@@ -264,6 +265,7 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
   # Iterate by deployment 
   index_list <- unique(jpg_init$id)
 
+  # index_id = index_list[2]
   for(index_id in index_list){
     
     # Create helpers
@@ -345,9 +347,10 @@ fxn_jpg_rename_exif <- function(index_site, index_year){
       
       return(revised_exif)
     }
-    
+
     #  Create new image numbers 
     add_image_n <- fxn_jpg_rename(exif_info, 0)
+    # add_image_n <- fxn_jpg_rename(exif_info, 1)
     
     # First: Rename image files with temp_ prefix 
     #  Prevents overwriting duplicate image names
