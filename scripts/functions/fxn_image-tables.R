@@ -1137,7 +1137,7 @@ fxn_conduct_checks_qc <- function(index_data,
   # Confirm qc_by, qc_certainty if review = TRUE
   check_needs_review <- 
     data_tidy_fixed %>%
-    filter(review == TRUE, 
+    filter(review == TRUE & error != TRUE, 
            is.na(qc_by) | is.na(qc_certainty)) 
   
   if(nrow(check_needs_review) > 0){
