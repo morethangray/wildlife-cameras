@@ -19,16 +19,18 @@ source(here("scripts/functions/fxn_image-tables.R"))
 # A new _error file created ONLY when errors are found
 #   If there aren't errors, no new file is made
 # ---------------------------------------------------------- -----
-# Define site  ----
+# DEFINE SITE  ----
 # PWD: Pepperwood WPI grid
 # MMP: Modini WPI grid
 # FOR: Pepperwood forest plots
 # DEN: DENDRA D-RAI cameras
 #
-index_site = "FOR"
+index_site = "PWD"
 index_year = "2024"
 # ========================================================== -----
 # ========================================================== -----
+# CHECK INVENTORY AND FILE STATUS ----
+# ---------------------------------------------------------- -----
 # Compare inventory tracking ----
 dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_catalog"]])
@@ -36,57 +38,55 @@ dlog_ilog_compare <- fxn_dlog_ilog_compare(index_site)
 # View(dlog_ilog_compare[["done_tidy"]])
 # View(dlog_ilog_compare[["done_vault"]])
 # 
-# Find new files ----
-# Folders  0P, 0M
-new_folders <- fxn_dir_jpg_find_new(index_site, index_year) 
-#   * * * WRITE CSV AS DLOG TEMPLATE * * *  ----
+# Find new surveys (new image folders) ----
+new_folders <- fxn_find_new_folders(index_site, index_year) 
+#   [BY HAND] Add new survey rows to logs (x2) ----
+#
+#   - Add id to dlog (use output file)
+#   - Add id to ilog
+#
+# File located in K:\wildlife-cameras\output\<SITE>
+# File name: <SITE>_new-folder-names
 #
 # Find image tables that need processing ----
+# = + = + CONFIRM THIS FUNCTION IT HAS BEEN UPDATED = + = +  ----
 check_file_status <- fxn_check_file_status()
-# Individual tables can be viewed using check_file_status$<NAME>
-#   Rename images: 0P; 0M
-check_file_status$check_rename
-#   Exif: 0P; 0M
-check_file_status$check_exif 
-#   Blank: 0P; 0M
-check_file_status$check_blank
-#   Tidy: 0P; 0M
-check_file_status$check_tidy 
-#   Vault: 0P; 0M
-check_file_status$check_vault 
+#
+# # Individual tables can be viewed using check_file_status$<NAME>
+# #   Rename images: 0P; 0M
+# check_file_status$check_rename
+# #   Exif: 0P; 0M
+# check_file_status$check_exif 
+# #   Blank: 0P; 0M
+# check_file_status$check_blank
+# #   Tidy: 0P; 0M
+# check_file_status$check_tidy 
+# #   Vault: 0P; 0M
+# check_file_status$check_vault 
 # #
 # ========================================================== -----
-# REVIEW IMAGE FOLDERS ----
-# ---------------------------------------------------------- -----
-#   [BY HAND] Add new surveys to dlog ----
-#
-# Use <SITE>_folder-names_init.csv 
-# File located in K:\wildlife-cameras\output\<SITE>
-# File name: <SITE>_folder-names_init
-#
-#   [BY HAND] Add id to ilog ----
-# Check folder names ----
+# 1. REVIEW IMAGE FOLDERS ----
+# Check folder names
 # Compare folder naming convention with dlog 
 dir_summary_errors <- 
-  fxn_dir_jpg_map(index_site,  index_year)  %>%
+  fxn_dir_jpg_map(index_site, index_year)  %>%
   select(id, 
-           camera_name, 
-           parent_name, 
-           path,
-           starts_with("err")) %>%
+         camera_name, 
+         parent_name, 
+         path,
+         starts_with("err")) %>%
   filter(err_id == TRUE)
 #
 dir_summary_errors
 #
 # Check for multiple folders (i.e., errors)
-dir_summary_errors %>%
-  group_by(id, 
-           parent_name) %>%
-  count() %>%
-  filter(n>1)
+# dir_summary_errors %>%
+#   group_by(id, parent_name) %>%
+#   count() %>%
+#   filter(n > 1)
 #
 # ========================================================== -----
-# PROCESS IMAGE FILES ----
+# 2. PROCESS IMAGE FILES ----
 # ---------------------------------------------------------- -----
 # Rename images & create _exif files ----
 #   Can take a long time if folders have >1000 images
@@ -155,8 +155,12 @@ fxn_exif_summary_errors(index_site)
 # Create blank image tables ----
 fxn_table_create_blank(index_site)
 #
-#   [BY HAND] Update done_blank in dlog ----
-#   [BY HAND] Update done_blank in ilog ----
+#   [BY HAND] Update logs (x2) ----
+#
+#   - Update dlog: Define dlog$has_data = TRUE
+#   - Update ilog: Define ilog$has_data = TRUE
+#
+#   Confirm logs are correct ----
 fxn_dlog_ilog_compare(index_site)
 #
 # Check blank image tables ----
@@ -170,38 +174,42 @@ fxn_table_check_blank(index_site)
 # No new file will be created if there are no errors
 #
 # ========================================================== -----
-# PROCESS CATALOGED IMAGE TABLES (TIDY)  ----
+# 3. PROCESS CATALOGED IMAGE TABLES (TIDY)  ----
 # ---------------------------------------------------------- -----
 # Check cataloged image table format and values ----
 fxn_table_check_catalog(index_site, index_type = "catalog")
 #
-# Check count format ----
+#   Check count format ----
 fxn_check_count_format(index_site, index_path = path_table_catalog)
 #
-# Identify new photo_type_binomial combinations ----
+#   Identify new photo_type_binomial combinations ----
 # OUTPUT: Writes _new-combinations.csv
 fxn_new_photo_type_binomial_all(index_site, index_type = "catalog")
 #
-# Compare error flags with dlog ----
+#   Compare error flags with dlog ----
 # These should be in dlog; add to dlog if not 
 check_errors <- 
   fxn_table_check_errors(index_site,
                          index_type = "catalog")
 check_errors
 #
+# ---------------------------------------------------------- -----
 # Create _tidy image tables ----
 fxn_tidy_for_qc(index_site)
 #
-#   [BY HAND] Update done_tidy in dlog ----
-#   [BY HAND] Update done_tidy in ilog ----
+#   [BY HAND] Update logs (x2) ----
+#
+#   - Update dlog: Define dlog$done_tidy = TRUE
+#   - Update ilog: Define ilog$done_tidy = TRUE
+#
+#   Confirm logs are correct ----
 fxn_dlog_ilog_compare(index_site)
 #
 # ========================================================== -----
-# PROCESS QC IMAGE TABLES (VAULT) ----
+# 4. PROCESS QC IMAGE TABLES (VAULT) ----
 # ---------------------------------------------------------- -----
 # Check QC'd image tables ----
 check_catalog <- fxn_table_check_catalog(index_site, index_type = "qc") 
-check_catalog
 #
 fxn_check_count_format(index_site, index_path = path_table_qc)
 #
@@ -209,9 +217,12 @@ check_qc <- fxn_table_check_qc(index_site)
 #
 # Create clean image tables in vault ----
 fxn_tidy_for_vault(index_site)
+#   [BY HAND] Update logs (x2) ----
 #
-#   [BY HAND] Update done_vault in dlog ----
-#   [BY HAND] Update done_vault in ilog ----
+#   - Update dlog: Define dlog$done_vault = TRUE
+#   - Update ilog: Define ilog$done_vault = TRUE
+#
+#   Confirm logs are correct ----
 fxn_dlog_ilog_compare(index_site)
 #
 # ========================================================== -----

@@ -55,15 +55,14 @@ list_column_names <-
   pull(column_name)
 
 lookup_qc_initials <- 
-  read_csv(here(path_in,
-                "staff-names.csv"), 
-           col_types = cols()) %>%
+  read_xlsx(here(path_in,
+                "staff-names.xlsx"), 
+            sheet = "staff-names") %>%
   drop_na(qc_initials) %>%
+  mutate(qc_initials_lower = str_to_lower(qc_initials), 
+         qc_initials_sentence = str_to_sentence(qc_initials)) %>%
   select(qc_by = name, 
-         qc_initials, 
-         qc_initials_lower, 
-         qc_initials_sentence,
-         sort) 
+         starts_with("qc"))
 
 lookup_certainty <- 
   tibble(orig_certainty = c("Absolutely sure",
