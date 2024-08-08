@@ -1525,7 +1525,8 @@ fxn_tidy_for_qc <- function(index_site){
       fxn_table_read_xlsx(index_file = index_file, index_type = "catalog")  %>%
       mutate(image_id = str_remove(image_id, ".JPG"),
              image_file = str_remove(image_file, "IMG-")) %>%
-      fxn_add_flags()
+      fxn_add_flags() %>%
+      fxn_add_flags_comments()
      
     # data_tidy: Tidy values for binomial and count  ----
     data_tidy <- 
@@ -1646,21 +1647,17 @@ fxn_tidy_for_vault <- function(index_site){
   
   # Get file information, list files ----
   dir_table <-
-    fxn_dir_table_map(index_site,
-                      index_type = "clean") %>%
+    fxn_dir_table_map(index_site, index_type = "clean") %>%
     # Exclude any _final_tidy files
     filter(str_detect(file_name, "qc"))  %>%
-    mutate(qc_initials_lower = str_sub(file_name,
-                                       27, 28)) %>%
+    mutate(qc_initials_lower = str_sub(file_name, 27, 28)) %>%
     left_join(lookup_qc_initials, "qc_initials_lower")
   
   # For legacy data 
   # dir_table <-
-  #   fxn_dir_table_map(index_site,
-  #                     index_type = "qc")  %>%
+  #   fxn_dir_table_map(index_site, index_type = "qc")  %>%
   #   left_join(dlog %>%
-  #               select(id, 
-  #                      qc_initials = qc_by), "id") %>%
+  #               select(id, qc_initials = qc_by), "id") %>%
   #   left_join(lookup_qc_initials, "qc_initials")
   
   list_files <- unique(dir_table$file_name)
@@ -1697,10 +1694,12 @@ fxn_tidy_for_vault <- function(index_site){
              image_file = str_remove_all(image_file, "IMG-")) %>%
       distinct() %>%
       fxn_add_flags() %>%
-      fxn_revise_qc_by_for_sentence_case() 
-    
+      fxn_revise_qc_by_for_sentence_case() %>%
+      fxn_tidy_comments_after_qc()
+    # 
     # data_raw %>%
-    #   distinct(comments)
+    #   distinct(comments) %>%
+    #   fxn_tidy_comments_after_qc()
     
     # data_tidy: Tidy values for binomial, count, comments  ----
     data_tidy <- 
@@ -1709,22 +1708,13 @@ fxn_tidy_for_vault <- function(index_site){
                               index_n = index_n) %>%
       rename(id_init = id) %>%
       mutate(id = index_id) %>%
-      mutate(image_n_pad = str_pad(image_n,
-                                   width = 5,
-                                   pad = "0",
-                                   side = "left"),
-             image_n_jpg = paste0("_",
-                                  image_n_pad,
-                                  ".JPG"),
-             image_file = paste0(id,
-                                 image_n_jpg),
-             
-             image_id = str_remove(image_file,
-                                   ".JPG"))  %>%
+      mutate(image_n_pad = str_pad(image_n, width = 5, pad = "0",side = "left"),
+             image_n_jpg = paste0("_", image_n_pad, ".JPG"),
+             image_file = paste0(id, image_n_jpg),
+             image_id = str_remove(image_file, ".JPG"))  %>%
       rename(comments_init = comments) %>%
       left_join(lookup_comments, "comments_init") %>%
-      mutate(comments = ifelse(is.na(comments), 
-                               comments_init, comments)) %>%
+      mutate(comments = ifelse(is.na(comments), comments_init, comments)) %>%
       select(-id_init, 
              -image_n_pad, 
              -image_n_jpg, 
@@ -1740,36 +1730,32 @@ fxn_tidy_for_vault <- function(index_site){
       # Replace NA with N/A for non-Animal photo_type 
       mutate(
         binomial_1 = 
-          case_when(
-            is.na(binomial_1) & 
-              photo_type %in% c("Blank", 
-                                "Start", 
-                                "End", 
-                                "Setup", 
-                                "Pickup",
-                                "Unidentifiable", 
-                                "Corrupt") ~
-              "N/A", 
-            TRUE ~ binomial_1), 
+          case_when(is.na(binomial_1) & 
+                      photo_type %in% c("Blank", 
+                                        "Start", 
+                                        "End", 
+                                        "Setup", 
+                                        "Pickup",
+                                        "Unidentifiable", 
+                                        "Corrupt") ~
+                      "N/A", 
+                    TRUE ~ binomial_1), 
         
         # Correct N/A spelling 
-        binomial_1 = str_replace(binomial_1, 
-                                 "N/a", 
-                                 "N/A"), 
+        binomial_1 = str_replace(binomial_1, "N/a", "N/A"), 
         
         # Correct "Unidentifiable" in binomial_1 
         photo_type = 
-          case_when(
-            binomial_1 == "Unidentifiable" &
-              qc_certainty == "Absolutely sure" ~ 
-              "Unidentifiable", 
-            TRUE ~ photo_type), 
+          case_when(binomial_1 == "Unidentifiable" &
+                      qc_certainty == "Absolutely sure" ~ 
+                      "Unidentifiable", 
+                    TRUE ~ photo_type), 
+            
         binomial_1 = 
-          case_when(
-            binomial_1 == "Unidentifiable" &
-              qc_certainty == "Absolutely sure" ~
-              "N/A", 
-            TRUE ~ binomial_1), 
+          case_when(binomial_1 == "Unidentifiable" &
+                      qc_certainty == "Absolutely sure" ~
+                      "N/A", 
+                    TRUE ~ binomial_1), 
         
         # # Correct Blank count 
         # count_1 = 
@@ -1782,13 +1768,12 @@ fxn_tidy_for_vault <- function(index_site){
         
         # Add missing Start and End in photo_type
         photo_type =
-          case_when(
-            image_n == last_image_n & 
-              binomial_1 == "Unidentifiable" &
-              qc_certainty == "Absolutely sure"  ~  "End",
-            image_n == last_image_n & photo_type %nin% "End" ~ "End", 
-            image_n == first_image_n & photo_type %nin% "Start" ~ "Start",
-            TRUE ~ photo_type), 
+          case_when(image_n == last_image_n & 
+                      binomial_1 == "Unidentifiable" &
+                      qc_certainty == "Absolutely sure"  ~  "End",
+                    image_n == last_image_n & photo_type %nin% "End" ~ "End", 
+                    image_n == first_image_n & photo_type %nin% "Start" ~ "Start",
+                    TRUE ~ photo_type), 
         
         image_id = str_remove(image_id, ".JPG")) %>% 
       select(any_of(list_column_names)) 
@@ -1799,22 +1784,15 @@ fxn_tidy_for_vault <- function(index_site){
                     index_n = 1) 
     
     # Move qc table to archive ----
-    file_move(path = here(path_table_qc,
-                          index_file), 
-              new_path = here(path_table_qc_archive,
-                              index_file))
+    file_move(path = here(path_table_qc, index_file), 
+              new_path = here(path_table_qc_archive, index_file))
     
     # Move final_tidy table to archive ----
     tidy_file <- paste0(index_id, "_final_tidy.xlsx")
     
-    if(file.exists(here(path_table_qc,
-                        tidy_file))){
-      file_move(path = here(path_table_qc,
-                            tidy_file), 
-                new_path = here(path_table_qc_archive,
-                                "image-tables_final_tidy", 
-                                tidy_file
-                ))
+    if(file.exists(here(path_table_qc, tidy_file))){
+      file_move(path = here(path_table_qc,  tidy_file), 
+                new_path = here(path_table_qc_archive, "image-tables_final_tidy", tidy_file))
     }
     
     # Show completion message ----
@@ -2386,7 +2364,6 @@ fxn_add_flags <- function(index_data){
     )
   }
   
-  
   # Convert review, error, good columns to uppercase
   # Standardize as logical values
   index_data %>%
@@ -2395,9 +2372,13 @@ fxn_add_flags <- function(index_data){
            good = to_logical_upper(good)) %>%
     
     # Set a flag for items needing review or marked as error
-    mutate(catalog_flag = review | error) %>%
-    
-    # Add annotations to comments based on review and error flags
+    mutate(catalog_flag = review | error) 
+}
+
+fxn_add_flags_comments <- function(index_data){
+  
+  # Add annotations to comments based on review and error flags
+  index_data %>%
     mutate(
       comments = str_squish(comments),
       comments_review = 
@@ -2407,8 +2388,7 @@ fxn_add_flags <- function(index_data){
       comments_error = 
         ifelse(error, 
                "ERROR: error flagged by cataloger",
-               NA_character_)
-    ) %>%
+               NA_character_)) %>%
     
     # Combine the review and error comments with existing comments
     unite(comments, 
@@ -2416,8 +2396,9 @@ fxn_add_flags <- function(index_data){
           sep = "; ", 
           na.rm = TRUE)  %>%
     
-      # Remove trailing spaces from comments
-    fxn_drop_end_space()
+    # Remove trailing spaces from comments
+    fxn_drop_end_space() %>%
+    fxn_clean_text()
 }
 
 #   fxn_drop_end_space  ----
