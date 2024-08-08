@@ -287,6 +287,7 @@ fxn_define_camera_project <- function(index_site){
       read_excel(here(path_ilog),
                  sheet = index_site) %>%
       select(id,
+             year_to,
              drive_img,
              done_blank,
              done_catalog,
